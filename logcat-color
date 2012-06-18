@@ -1,198 +1,157 @@
-#!/usr/bin/python
-'''
-    Copyright 2009, The Android Open Source Project, 
-    Modifications Copyright 2012, Marshall Culpepper,
+#!/usr/bin/env python
+"""
+logcat-color
 
-    Licensed under the Apache License, Version 2.0 (the "License"); 
-    you may not use this file except in compliance with the License. 
-    You may obtain a copy of the License at 
+Copyright 2012, Marshall Culpepper
+Licensed under the Apache License, Version 2.0
 
-        http://www.apache.org/licenses/LICENSE-2.0 
-
-    Unless required by applicable law or agreed to in writing, software 
-    distributed under the License is distributed on an "AS IS" BASIS, 
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-    See the License for the specific language governing permissions and 
-    limitations under the License.
-'''
-
-# Script to highlight adb logcat output for terminals
-# Originally written by jeff sharkey, http://jsharkey.org/
-# piping detection and popen() added by other android team members
-
-import os, sys, re, StringIO
-import fcntl, termios, struct
+Portions Copyright 2009, The Android Open Source Project
+Thanks to Jeff Sharkey, the author of coloredlogcat.py,
+the original inspiration of logcat-color
+"""
+import asyncore
+import fcntl
 import optparse
+import os
+import struct
 from subprocess import Popen, PIPE
+import sys
+import termios
 
-# unpack the current terminal width/height
-if os.isatty(sys.stdout.fileno()):
-    data = fcntl.ioctl(sys.stdout.fileno(), termios.TIOCGWINSZ, '1234')
-    HEIGHT, WIDTH = struct.unpack('hh',data)
-else:
-   # store a large width default when the output of this script is being piped
-   WIDTH = 2000
+try:
+    import logcatcolor
+except:
+    # add .. to include path for local testing
+    sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
+from logcatcolor.config import LogcatColorConfig
+from logcatcolor.profile import Profile
+from logcatcolor.reader import LogcatReader
 
-def format(fg=None, bg=None, bright=False, bold=False, dim=False, reset=False):
-    # manually derived from http://en.wikipedia.org/wiki/ANSI_escape_code#Codes
-    codes = []
-    if reset: codes.append("0")
-    else:
-        if not fg is None: codes.append("3%d" % (fg))
-        if not bg is None:
-            if not bright: codes.append("4%d" % (bg))
-            else: codes.append("10%d" % (bg))
-        if bold: codes.append("1")
-        elif dim: codes.append("2")
-        else: codes.append("22")
-    return "\033[%sm" % (";".join(codes))
+class LogcatColor(object):
+    def __init__(self):
+        self.width = self.get_term_width()
+        self.parse_args()
+        self.config = LogcatColorConfig(self.options.config)
 
+        self.profile = None
+        if len(self.args) >= 1:
+            self.profile = Profile.get_profile(self.args[0])
+            if self.profile:
+                self.args = self.args[1:]
 
-def indent_wrap(message, indent=0, width=80):
-    wrap_area = width - indent
-    messagebuf = StringIO.StringIO()
-    current = 0
-    while current < len(message):
-        next = min(current + wrap_area, len(message))
-        messagebuf.write(message[current:next])
-        if next < len(message):
-            messagebuf.write("\n%s" % (" " * indent))
-        current = next
-    return messagebuf.getvalue()
+        if not self.profile:
+            self.logcat_args.extend(self.args)
 
+    def get_term_width(self):
+        stdout_fd = sys.stdout.fileno()
+        if os.isatty(stdout_fd):
+            # unpack the current terminal width / height
+            data = fcntl.ioctl(stdout_fd, termios.TIOCGWINSZ, '1234')
+            height, width = struct.unpack('hh', data)
+        else:
+           # store a large width when the output of this script is being piped
+           width = 2000
 
-LAST_USED = [RED,GREEN,YELLOW,BLUE,MAGENTA,CYAN,WHITE]
-KNOWN_TAGS = {
-    "dalvikvm": BLUE,
-    "Process": BLUE,
-    "ActivityManager": CYAN,
-    "ActivityThread": CYAN,
-}
+        return width
 
-def allocate_color(tag):
-    # this will allocate a unique format for the given tag
-    # since we dont have very many colors, we always keep track of the LRU
-    if not tag in KNOWN_TAGS:
-        KNOWN_TAGS[tag] = LAST_USED[0]
-    color = KNOWN_TAGS[tag]
-    LAST_USED.remove(color)
-    LAST_USED.append(color)
-    return color
+    def parse_args(self):
+        parser = optparse.OptionParser()
 
+        # logcat-color options
+        parser.add_option("--config", dest="config", default=None,
+            help="path to logcat-color config file (default: ~/.logcat-config)")
 
-RULES = {
-    #re.compile(r"([\w\.@]+)=([\w\.@]+)"): r"%s\1%s=%s\2%s" % (format(fg=BLUE), format(fg=GREEN), format(fg=BLUE), format(reset=True)),
-}
+        # ADB options
+        parser.add_option("-d", "--device", action="append_const",
+            dest="adb_args", const="-d",
+            help="connect to the only plugged-in device")
+        parser.add_option("-e", "--emulator", action="append_const",
+            dest="adb_args", const="-e",
+            help="connect to the only running emulator")
+        parser.add_option("-s", "--serial-number", dest="serial_number",
+            default=None, help="connect to a specific device by it's serial" +
+                               " number")
 
-TAGTYPE_WIDTH = 3
-TAG_WIDTH = 20
-PROCESS_WIDTH = 8 # 8 or -1
-HEADER_SIZE = TAGTYPE_WIDTH + 1 + TAG_WIDTH + 1 + PROCESS_WIDTH + 1
+        # Logcat options
+        # See http://developer.android.com/guide/developing/tools/logcat.html
+        # We can't support -d / -s since we use them for ADB above, but we
+        # provide long-form options in case they are needed
+        parser.add_option("-b", "--buffer", action="append", dest="buffers",
+            help="loads an alternate log buffer for viewing, such as event or" +
+                 " radio")
+        parser.add_option("-c", "--clear", action="append_const",
+            dest="logcat_args", const="-c",
+            help="clears (flushes) the entire log and exits")
+        parser.add_option("--dump", action="append_const",
+            dest="logcat_args", const="-d",
+            help="dumps the log to the screen and exits")
+        parser.add_option("-f", "--file", dest="file", default=None,
+            help="writes log message output to <file>. the default is stdout")
+        parser.add_option("-g", "--print-size", action="append_const",
+            dest="logcat_args", const="-g",
+            help="prints the size of the specified log buffer and exits")
+        parser.add_option("-n", "--max-rotated-logs",
+            dest="max_rotated_logs", type="int",
+            help="sets the maximum number of rotated logs. requires the -r" +
+                 " option (default: 4)")
+        parser.add_option("-r", "--rotate", dest="rotate_kbytes", type="int",
+            help="rotates the log file every <rotate_kbytes> of output." +
+                 " requires the -f option (default: 16)")
+        parser.add_option("--silent", action="append_const", dest="logcat_args",
+            const="-s", help="sets the default filter spec to silent")
+        parser.add_option("-v", "--format", dest="format", default=None,
+            help="sets the output format for log messages. possible formats:" +
+                 " brief, process, tag, raw, time, threadtime, long" +
+                 " (default: brief)")
 
-TAGTYPES = {
-    "V": "%s%s%s " % (format(fg=WHITE, bg=BLACK), "V".center(TAGTYPE_WIDTH), format(reset=True)),
-    "D": "%s%s%s " % (format(fg=BLACK, bg=BLUE), "D".center(TAGTYPE_WIDTH), format(reset=True)),
-    "I": "%s%s%s " % (format(fg=BLACK, bg=GREEN), "I".center(TAGTYPE_WIDTH), format(reset=True)),
-    "W": "%s%s%s " % (format(fg=BLACK, bg=YELLOW), "W".center(TAGTYPE_WIDTH), format(reset=True)),
-    "E": "%s%s%s " % (format(fg=BLACK, bg=RED), "E".center(TAGTYPE_WIDTH), format(reset=True)),
-}
+        (options, args) = parser.parse_args()
+        self.options = options
+        self.args = args
 
-retag = re.compile("^([A-Z])/([^\(]+)\(([^\)]+)\): (.*)$")
+        if options.serial_number:
+            self.adb_args = ["-s", options.serial_number]
+        else:
+            self.adb_args = options.adb_args or []
 
-def get_adb_command():
-    # use OptionParser to pluck out args
-    parser = optparse.OptionParser()
-    # ADB options
-    parser.add_option("-d", action="append_const", dest="adb_args", const="-d")
-    parser.add_option("-e", action="append_const", dest="adb_args", const="-e")
-    parser.add_option("-s", dest="serial_id", default=None)
+        self.logcat_args = options.logcat_args or []
+        if options.buffers:
+            for buf in options.buffers:
+                self.logcat_args.extend(["-b", buf])
 
-    # Logcat options: http://developer.android.com/guide/developing/tools/logcat.html
-    # we can't support -d / -s since we use them for ADB above
-    parser.add_option("-b", action="append", dest="buffers")
-    parser.add_option("-c", action="append_const", dest="logcat_args", const="-c")
-    parser.add_option("-f", dest="file", default=None)
-    parser.add_option("-g", action="append_const", dest="logcat_args", const="-g")
-    parser.add_option("-n", dest="max_rotated_logs", type="int")
-    parser.add_option("-r", dest="rotate_kbytes", type="int")
-    parser.add_option("-v", dest="format", default=None)
+        if options.file:
+            self.logcat_args.extend(["-f", options.file])
 
-    (options, args) = parser.parse_args()
+        if options.max_rotated_logs:
+            self.logcat_args.extend(["-n", options.max_rotated_logs])
 
-    if options.serial_id:
-        adb_args = ["-s", options.serial_id]
-    else:
-        adb_args = options.adb_args or []
+        if options.rotate_kbytes:
+            self.logcat_args.extend(["-r", options.rotate_kbytes])
 
-    logcat_args = options.logcat_args or []
-    if options.buffers:
-        for buf in options.buffers:
-            logcat_args.extend(["-b", buf])
+        if options.format:
+            self.logcat_args.extend(["-v", options.format])
 
-    if options.file:
-        logcat_args.extend(["-f", options.file])
+    def start(self):
+        if self.profile:
+            buffers = self.profile.get_buffers()
+            if buffers:
+                for b in buffers: self.logcat_args.extend(["-b", b])
 
-    if options.max_rotated_logs:
-        logcat_args.extend(["-n", options.max_rotated_logs])
+        # if someone is piping, use stdin as input. if not, invoke adb logcat
+        input = sys.stdin
+        if os.isatty(sys.stdin.fileno()):
+            adb_command = ["adb"]
+            adb_command.extend(self.adb_args)
+            adb_command.append("logcat")
+            adb_command.extend(self.logcat_args)
+            input = Popen(adb_command, stdout=PIPE).stdout
 
-    if options.rotate_kbytes:
-        logcat_args.extend(["-r", options.rotate_kbytes])
+        reader = LogcatReader(input, self.config, profile=self.profile,
+            width=self.width)
+        try:
+            asyncore.loop()
+        except KeyboardInterrupt, e:
+            pass
 
-    if options.format:
-        logcat_args.extend(["-v", options.format])
-
-    logcat_args.extend(args)
-
-    adb_command = ["adb"]
-    adb_command.extend(adb_args)
-    adb_command.append("logcat")
-    adb_command.extend(logcat_args)
-    return adb_command
-
-# if someone is piping in to us, use stdin as input.  if not, invoke adb logcat
-if os.isatty(sys.stdin.fileno()):
-    input = Popen(get_adb_command(), stdout=PIPE).stdout
-else:
-    input = sys.stdin
-
-while True:
-    try:
-        line = input.readline()
-    except KeyboardInterrupt:
-        break
-
-    match = retag.match(line)
-    if not match is None:
-        tagtype, tag, owner, message = match.groups()
-        linebuf = StringIO.StringIO()
-
-        # center process info
-        if PROCESS_WIDTH > 0:
-            owner = owner.strip().center(PROCESS_WIDTH)
-            linebuf.write("%s%s%s " % (format(fg=BLACK, bg=BLACK, bright=True), owner, format(reset=True)))
-
-        # right-align tag title and allocate color if needed
-        tag = tag.strip()
-        color = allocate_color(tag)
-        tag = tag[-TAG_WIDTH:].rjust(TAG_WIDTH)
-        linebuf.write("%s%s %s" % (format(fg=color, dim=False), tag, format(reset=True)))
-
-        # write out tagtype colored edge
-        if not tagtype in TAGTYPES: break
-        linebuf.write(TAGTYPES[tagtype])
-
-        # insert line wrapping as needed
-        message = indent_wrap(message, HEADER_SIZE, WIDTH)
-
-        # format tag message using rules
-        for matcher in RULES:
-            replace = RULES[matcher]
-            message = matcher.sub(replace, message)
-
-        linebuf.write(message)
-        line = linebuf.getvalue()
-
-    print line
-    if len(line) == 0: break
+if __name__ == "__main__":
+    LogcatColor().start()

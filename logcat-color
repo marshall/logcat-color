@@ -43,6 +43,10 @@ class LogcatColor(object):
         if not self.profile:
             self.logcat_args.extend(self.args)
 
+        self.layout = "brief"
+        if self.options.plain:
+          self.layout = "plain"
+
     def get_term_width(self):
         stdout_fd = sys.stdout.fileno()
         if os.isatty(stdout_fd):
@@ -61,6 +65,10 @@ class LogcatColor(object):
         # logcat-color options
         parser.add_option("--config", dest="config", default=None,
             help="path to logcat-color config file (default: ~/.logcat-config)")
+        parser.add_option("--plain", action="store_true",
+            dest="plain", default=False,
+            help="apply profiles and filters, but don't colorize / format" +
+                 " output (useful for logging to a file)")
 
         # ADB options
         parser.add_option("-d", "--device", action="append_const",
@@ -147,7 +155,7 @@ class LogcatColor(object):
             input = Popen(adb_command, stdout=PIPE).stdout
 
         reader = LogcatReader(input, self.config, profile=self.profile,
-            width=self.width)
+            layout=self.layout, width=self.width)
         try:
             asyncore.loop()
         except KeyboardInterrupt, e:

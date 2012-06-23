@@ -27,22 +27,35 @@ class BriefLayout(object):
         )
         self.column_count = len(self.columns)
 
-    def layout(self, line):
+    def init_log_data(self, line):
         match = self.REGEX.match(line)
         if not match:
+            return False
+
+        self.priority, self.tag, self.pid, self.message = \
+            (m.strip() for m in match.groups())
+        return True
+
+    def clean_log_data(self):
+        self.priority = self.tag = self.pid = self.message = None
+
+    def include(self):
+        if self.profile and not self.profile.include(
+            self.tag, self.priority, self.message):
+            return False
+
+        return True
+
+    def layout(self, line):
+        if not self.init_log_data(line):
             return None
 
+        if not self.include():
+            self.clean_log_data()
+            return None
+
+        column_data = (self.pid, self.tag, self.priority, self.message)
         formatted = StringIO.StringIO()
-        priority, tag, pid, message = match.groups()
-        pid = pid.strip()
-        priority = priority.strip()
-        tag = tag.strip()
-        message = message.strip()
-
-        if self.profile and not self.profile.include(tag, priority, message):
-            return None
-
-        column_data = (pid, tag, priority, message)
 
         for index in range(0, self.column_count):
             data = column_data[index]
@@ -51,4 +64,18 @@ class BriefLayout(object):
             if index < self.column_count - 1:
                 formatted.write(" ")
 
+        self.clean_log_data()
         return formatted.getvalue()
+
+class PlainLayout(BriefLayout):
+
+    def layout(self, line):
+        if not self.init_log_data(line):
+            return None
+
+        if not self.include():
+            self.clean_log_data()
+            return None
+
+        self.clean_log_data()
+        return line

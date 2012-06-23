@@ -3,6 +3,8 @@ import asynchat
 import fcntl
 from logcatcolor.layout import *
 import os
+import sys
+import traceback
 
 # Parts copied from asyncore.file_dispatcher
 class FileLineReader(asynchat.async_chat):
@@ -36,7 +38,12 @@ class FileLineReader(asynchat.async_chat):
 
     def found_terminator(self):
         line = "".join(self.log_buffer)
-        self.process_line(line)
+        try:
+            self.process_line(line)
+        except:
+            traceback.print_exc()
+            sys.exit(1)
+
         self.log_buffer = []
 
     def process_line(self):
@@ -46,7 +53,8 @@ class LogcatReader(FileLineReader):
     # TODO support other logcat logging formats:
     # process, tag, raw, time, threadtime, long
     layouts = {
-        "brief": BriefLayout
+        "brief": BriefLayout,
+        "plain": PlainLayout
     }
 
     def __init__(self, file, config, profile=None, layout="brief", width=80):

@@ -18,12 +18,6 @@ from subprocess import Popen, PIPE
 import sys
 import termios
 
-try:
-    import logcatcolor
-except:
-    # add .. to include path for local testing
-    sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-
 from logcatcolor.config import LogcatColorConfig
 from logcatcolor.profile import Profile
 from logcatcolor.reader import LogcatReader

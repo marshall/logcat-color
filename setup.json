@@ -1,0 +1,10 @@
+{
+    "name": "logcat-color",
+    "version": "0.2",
+    "description": "A colorful alternative to \"adb logcat\"",
+    "author": "Marshall Culpepper",
+    "author_email": "marshall.law@gmail.com",
+    "url": "http://github.com/marshall/logcat-color",
+    "scripts": ["logcat-color"],
+    "install_requires": ["colorama"]
+}

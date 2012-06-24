@@ -125,7 +125,11 @@ Supported commands:
         open("setup.json", "w").write(setup_json)
         message = "bump to version %s" % bump_version
 
-        os.execv("/usr/bin/git", ("commit", "-v", "-m", message, "-e"))
+        self.run("git", "add", "setup.json")
+
+        # TODO -- full path is needed for execv, detect this
+        git = "/usr/bin/git"
+        os.execv(git, (git, "commit", "-v", "-m", message, "-e"))
 
     def main(self):
         command = "help"

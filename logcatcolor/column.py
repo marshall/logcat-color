@@ -59,12 +59,13 @@ class PriorityColumn(object):
         "D": Fore.BLACK + Back.BLUE,
         "I": Fore.BLACK + Back.GREEN,
         "W": Fore.BLACK + Back.YELLOW,
-        "E": Fore.BLACK + Back.RED
+        "E": Fore.BLACK + Back.RED,
+        "F": Fore.BLACK + Back.RED
     }
 
     def __init__(self, width):
         self.formats = {}
-        for priority in ("V", "D", "I", "W", "E"):
+        for priority in self.COLORS.keys():
             self.formats[priority] = self.COLORS[priority] + \
                 priority.center(width) + Style.RESET_ALL
 

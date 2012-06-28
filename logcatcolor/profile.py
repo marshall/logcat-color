@@ -8,7 +8,7 @@ class Profile(object):
         return cls.__profiles__.get(name, None)
 
     def __init__(self, name=None, tags=None, priorities=None, filters=None,
-            buffers=None):
+            buffers=None, wrap=True):
         self.name = name
         self.__profiles__[name] = self
 
@@ -16,6 +16,7 @@ class Profile(object):
         self.init_priorities(priorities)
         self.init_filters(filters)
         self.buffers = buffers
+        self.wrap = wrap
 
     def init_tags(self, tags):
         self.tags = None

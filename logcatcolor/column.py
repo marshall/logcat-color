@@ -78,6 +78,10 @@ class MessageColumn(object):
         self.width = width
 
     def format(self, message):
+        # Don't wrap when width is None
+        if not self.width:
+            return message
+
         messagebuf = StringIO.StringIO()
         current = 0
         while current < len(message):

@@ -26,7 +26,7 @@ class LogcatColor(object):
     def __init__(self):
         self.width = self.get_term_width()
         self.parse_args()
-        self.config = LogcatColorConfig(self.options.config)
+        self.config = LogcatColorConfig(self.options)
 
         self.profile = None
         if len(self.args) >= 1:
@@ -63,6 +63,9 @@ class LogcatColor(object):
             dest="plain", default=False,
             help="apply profiles and filters, but don't colorize / format" +
                  " output (useful for logging to a file)")
+        parser.add_option("--no-wrap", action="store_false",
+            dest="wrap", default=True,
+            help="don't wrap console text into a column (makes for better copy/paste)")
 
         # ADB options
         parser.add_option("-d", "--device", action="append_const",

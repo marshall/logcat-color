@@ -19,11 +19,15 @@ class BriefLayout(object):
         if profile:
             tag_colors = profile.get_tag_colors()
 
+        message_width = None
+        if config.wrap and (not profile or profile.wrap):
+            message_width = width - message_left
+
         self.columns = (
             PIDColumn(config.get_pid_width()),
             TagColumn(config.get_tag_width(), tag_colors=tag_colors),
             PriorityColumn(config.get_priority_width()),
-            MessageColumn(message_left, width - message_left)
+            MessageColumn(message_left, message_width)
         )
         self.column_count = len(self.columns)
 

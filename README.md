@@ -13,6 +13,31 @@ A colorful alternative to the standard `adb logcat` command from the Android SDK
     
     $ python setup.py install
 
+## Examples
+
+Run and colorify `adb logcat`
+    
+    $ logcat-color
+
+Colorify an old logcat text file you have laying around
+    
+    $ logcat-color < /path/to/my.log
+
+Pipe logcat-color to egrep for only the tags you care about
+    
+    $ logcat-color -e | egrep '(Tag1|Tag2)'
+
+Run logcat-color with a custom profile for filters, colors, and custom arguments (see [Profiles](#profiles))
+    
+    $ logcat-color <profile-name>
+
+logcat-color also supports most of the standard adb / logcat arguments, making it a suitable full-time replacement for `adb logcat`
+    
+    $ alias logcat=/path/to/logcat-color
+    $ logcat -e
+    $ logcat -d
+    $ logcat -s 123456789 -b radio -b main
+
 
 ## <a id="configuration"></a>Configuration
 
@@ -69,31 +94,8 @@ Profiles live in the [logcat-color configuration file](#configuration). Here is 
         ]
     )
 
-
-## Examples
-
-Run and colorify `adb logcat`
-    
-    $ logcat-color
-
-Colorify an old logcat text file you have laying around
-    
-    $ logcat-color < /path/to/my.log
-
-Pipe logcat-color to egrep for only the tags you care about
-    
-    $ logcat-color -e | egrep '(Tag1|Tag2)'
-
-Run logcat-color with a custom profile for filters, colors, and custom arguments (see [Profiles](#profiles))
-    
-    $ logcat-color <profile-name>
-
-logcat-color also supports most of the standard adb / logcat arguments, making it a suitable full-time replacement for `adb logcat`
-    
-    $ alias logcat=/path/to/logcat-color
-    $ logcat -e
-    $ logcat -d
-    $ logcat -s 123456789 -b radio -b main
+## Screenshot
+![logcat-color screenshot of Boot2Gecko](https://img.skitch.com/20120629-jkeek3mbk2ibk9w75xqku88wpt.jpg)
 
 ## Thanks
 

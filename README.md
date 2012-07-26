@@ -1,5 +1,5 @@
 # logcat-color
-A colorful alternative to the standard `adb logcat` command from the Android SDK.
+A colorful alternative to the `adb logcat` command from the Android SDK.
 
 # Installation
 
@@ -38,6 +38,9 @@ logcat-color also supports most of the standard adb / logcat arguments, making i
     $ logcat -d
     $ logcat -s 123456789 -b radio -b main
 
+For command line usage documentation:
+    
+    $ logcat-color --help
 
 ## <a id="configuration"></a>Configuration
 
@@ -57,6 +60,9 @@ and types available to it.
     # Width of priority (log level) column, default is 3
     priority_width = 3
 
+    # Whether or not to wrap the message inside a column. Setting this to False
+    # enables easier copy/paste. default is True
+    wrap = True
 
 ## <a id="profiles"></a> Profiles
 

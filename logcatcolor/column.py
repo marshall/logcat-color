@@ -4,6 +4,14 @@ import StringIO
 
 colorama.init()
 
+class TimeColumn(object):
+    FORMAT = Fore.WHITE + "%s" + Style.RESET_ALL
+    def __init__(self, width):
+        self.width = width
+
+    def format(self, time):
+        return self.FORMAT % time
+
 class PIDColumn(object):
     FORMAT = Fore.WHITE + Back.BLACK + Style.DIM + \
              "%s" + Style.RESET_ALL

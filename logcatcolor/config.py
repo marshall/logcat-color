@@ -12,6 +12,7 @@ class LogcatColorConfig(object):
     DEFAULT_TAG_WIDTH = 20
     DEFAULT_PRIORITY_WIDTH = 3
     DEFAULT_WRAP = True
+    DEFAULT_ADB = None
 
     def __init__(self, options):
         self.options = options
@@ -79,3 +80,6 @@ class LogcatColorConfig(object):
 
     def get_wrap(self):
         return self.config.get("wrap", self.DEFAULT_WRAP)
+
+    def get_adb(self):
+        return self.config.get("adb", self.DEFAULT_ADB)

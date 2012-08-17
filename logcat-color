@@ -136,6 +136,16 @@ class LogcatColor(object):
         if options.format:
             self.logcat_args.extend(["-v", options.format])
 
+    def get_adb(self):
+        if "ADB" in os.environ:
+            return os.environ["ADB"]
+
+        config_adb = self.config.get_adb()
+        if config_adb:
+            return config_adb
+
+        return "adb" # Let the system find adb on the PATH
+
     def start(self):
         if self.profile:
             buffers = self.profile.get_buffers()
@@ -145,7 +155,7 @@ class LogcatColor(object):
         # if someone is piping, use stdin as input. if not, invoke adb logcat
         input = sys.stdin
         if os.isatty(sys.stdin.fileno()):
-            adb_command = ["adb"]
+            adb_command = [self.get_adb()]
             adb_command.extend(self.adb_args)
             adb_command.append("logcat")
             adb_command.extend(self.logcat_args)

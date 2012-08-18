@@ -59,7 +59,6 @@ class LogcatReader(FileLineReader):
     }
 
     def __init__(self, file, config, profile=None, layout="brief", width=80):
-        print layout
         FileLineReader.__init__(self, file)
         layoutType = self.layouts[layout]
         self.layout = layoutType(config, profile, width)

@@ -106,7 +106,7 @@ class TimeLayout(BriefLayout):
 
     def include(self):
         if self.profile and not self.profile.include(
-            self.time, self.tag, self.priority, self.message):
+            self.tag, self.priority, self.message):
             return False
 
         return True

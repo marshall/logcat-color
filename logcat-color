@@ -40,6 +40,8 @@ class LogcatColor(object):
         self.layout = "brief"
         if self.options.plain:
           self.layout = "plain"
+        if self.options.format:
+          self.layout = self.options.format
 
     def get_term_width(self):
         stdout_fd = sys.stdout.fileno()

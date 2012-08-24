@@ -1,7 +1,8 @@
 import asyncore
 import asynchat
 import fcntl
-from logcatcolor.layout import *
+import inspect
+import logcatcolor.layout
 import os
 import sys
 import traceback
@@ -50,20 +51,24 @@ class FileLineReader(asynchat.async_chat):
         pass
 
 class LogcatReader(FileLineReader):
-    # TODO support other logcat logging formats:
-    # process, tag, raw, time, threadtime, long
-    layouts = {
-        "brief": BriefLayout,
-        "plain": PlainLayout,
-        "time": TimeLayout
-    }
-
+    LAYOUTS = {}
     def __init__(self, file, config, profile=None, layout="brief", width=80):
         FileLineReader.__init__(self, file)
-        layoutType = self.layouts[layout]
-        self.layout = layoutType(config, profile, width)
+        LayoutType = self.LAYOUTS[layout]
+        self.layout = LayoutType(config, profile, width)
 
     def process_line(self, line):
-        formatted = self.layout.layout(line)
+        formatted = self.layout.layout(line.strip())
         if formatted:
             print formatted
+
+for member in inspect.getmembers(logcatcolor.layout):
+    LayoutType = member[1]
+    if LayoutType == logcatcolor.layout.Layout:
+        continue
+    if not inspect.isclass(LayoutType):
+        continue
+    if not logcatcolor.layout.Layout in LayoutType.__bases__:
+        continue
+
+    LogcatReader.LAYOUTS[LayoutType.NAME] = LayoutType

@@ -4,28 +4,51 @@ import StringIO
 
 colorama.init()
 
-class TimeColumn(object):
-    FORMAT = Fore.WHITE + "%s" + Style.RESET_ALL
-    def __init__(self, width):
-        self.width = width
+class Column(object):
+    def __init__(self, layout):
+        self.width = layout.config.get_column_width(self)
 
-    def format(self, time):
-        return self.FORMAT % time
+    def format(self, data):
+        return self.FORMAT % data
 
-class PIDColumn(object):
+class DateColumn(Column):
+    NAME = "date"
     FORMAT = Fore.WHITE + Back.BLACK + Style.DIM + \
              "%s" + Style.RESET_ALL
-    def __init__(self, width):
-        self.width = width
+    DEFAULT_WIDTH = 7
+
+class TimeColumn(Column):
+    NAME = "time"
+    FORMAT = Fore.WHITE + Back.BLACK + Style.DIM + \
+             "%s" + Style.RESET_ALL
+    DEFAULT_WIDTH = 14
+
+class PIDColumn(Column):
+    NAME = "pid"
+    DEFAULT_WIDTH = 8
+    FORMAT = Fore.WHITE + Back.BLACK + Style.DIM + \
+             "%s" + Style.RESET_ALL
 
     def format(self, pid):
         # center process info
         if self.width > 0:
             pid = pid.center(self.width)
 
-        return self.FORMAT % pid
+        return Column.format(self, pid)
 
-class TagColumn(object):
+class TIDColumn(PIDColumn):
+    NAME = "tid"
+
+    def format(self, tid):
+        # normalize thread IDs to be decimal
+        if "0x" in tid:
+            tid = str(int(tid, 16))
+
+        return PIDColumn.format(self, tid)
+
+class TagColumn(Column):
+    NAME = "tag"
+    DEFAULT_WIDTH = 20
     COLOR_NAMES = ("RED", "GREEN", "YELLOW", "BLUE", "MAGENTA", "CYAN", "WHITE")
     COLOR_MAP = {}
 
@@ -34,8 +57,13 @@ class TagColumn(object):
         for color in cls.COLOR_NAMES:
             cls.COLOR_MAP[color] = getattr(Fore, color)
 
-    def __init__(self, width, tag_colors=None):
-        self.width = width
+    def __init__(self, layout):
+        Column.__init__(self, layout)
+
+        tag_colors = None
+        if layout.profile:
+            tag_colors = layout.profile.get_tag_colors()
+
         self.tag_colors = tag_colors or {}
         self.last_used = self.COLOR_MAP.values()[:]
 
@@ -61,7 +89,9 @@ class TagColumn(object):
 
 TagColumn.init_color_map()
 
-class PriorityColumn(object):
+class PriorityColumn(Column):
+    NAME = "priority"
+    DEFAULT_WIDTH = 3
     COLORS = {
         "V": Fore.WHITE + Back.BLACK,
         "D": Fore.BLACK + Back.BLUE,
@@ -71,19 +101,24 @@ class PriorityColumn(object):
         "F": Fore.BLACK + Back.RED
     }
 
-    def __init__(self, width):
+    def __init__(self, layout):
+        Column.__init__(self, layout)
         self.formats = {}
         for priority in self.COLORS.keys():
             self.formats[priority] = self.COLORS[priority] + \
-                priority.center(width) + Style.RESET_ALL
+                priority.center(self.width) + Style.RESET_ALL
 
     def format(self, priority):
         return self.formats[priority]
 
-class MessageColumn(object):
-    def __init__(self, left, width):
-        self.left = left
-        self.width = width
+class MessageColumn(Column):
+    NAME = "message"
+    DEFAULT_WIDTH = 0
+    def __init__(self, layout):
+        self.width = None
+        self.left = layout.total_column_width
+        if layout.config.wrap and (not layout.profile or layout.profile.wrap):
+            self.width = layout.width - self.left
 
     def format(self, message):
         # Don't wrap when width is None

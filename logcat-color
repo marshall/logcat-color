@@ -39,9 +39,11 @@ class LogcatColor(object):
 
         self.layout = "brief"
         if self.options.plain:
-          self.layout = "plain"
-        if self.options.format:
-          self.layout = self.options.format
+            self.layout = "raw"
+        elif self.options.format:
+            self.layout = self.options.format
+        elif self.profile.format:
+            self.layout = self.profile.format
 
     def get_term_width(self):
         stdout_fd = sys.stdout.fileno()
@@ -65,20 +67,19 @@ class LogcatColor(object):
             dest="plain", default=False,
             help="apply profiles and filters, but don't colorize / format" +
                  " output (useful for logging to a file)")
-        parser.add_option("--no-wrap", action="store_false",
-            dest="wrap", default=True,
-            help="don't wrap console text into a column (makes for better copy/paste)")
+        parser.add_option("--no-wrap", action="store_false", dest="wrap",
+            default=None, help="don't wrap console text into a column " +
+                               "(makes for better copy/paste)")
 
         # ADB options
-        parser.add_option("-d", "--device", action="append_const",
-            dest="adb_args", const="-d",
+        parser.add_option("-d", "--device", action="store_const",
+            dest="adb_device", const="device",
             help="connect to the only plugged-in device")
-        parser.add_option("-e", "--emulator", action="append_const",
-            dest="adb_args", const="-e",
+        parser.add_option("-e", "--emulator", action="store_const",
+            dest="adb_device", const="emulator",
             help="connect to the only running emulator")
-        parser.add_option("-s", "--serial-number", dest="serial_number",
-            default=None, help="connect to a specific device by it's serial" +
-                               " number")
+        parser.add_option("-s", "--serial-number", dest="adb_device",
+            help="connect to a specific device by it's serial number")
 
         # Logcat options
         # See http://developer.android.com/guide/developing/tools/logcat.html
@@ -116,12 +117,10 @@ class LogcatColor(object):
         self.options = options
         self.args = args
 
-        if options.serial_number:
-            self.adb_args = ["-s", options.serial_number]
-        else:
-            self.adb_args = options.adb_args or []
-
+        self.adb_device = options.adb_device
         self.logcat_args = options.logcat_args or []
+        self.logcat_format = options.format
+
         if options.buffers:
             for buf in options.buffers:
                 self.logcat_args.extend(["-b", buf])
@@ -135,18 +134,40 @@ class LogcatColor(object):
         if options.rotate_kbytes:
             self.logcat_args.extend(["-r", options.rotate_kbytes])
 
-        if options.format:
-            self.logcat_args.extend(["-v", options.format])
-
-    def get_adb(self):
+    def get_adb_args(self):
+        adb = "adb" # Let the system find adb on the PATH
         if "ADB" in os.environ:
-            return os.environ["ADB"]
+            adb = os.environ["ADB"]
 
         config_adb = self.config.get_adb()
         if config_adb:
-            return config_adb
+            adb = config_adb
 
-        return "adb" # Let the system find adb on the PATH
+        adb_args = [adb]
+        if not self.adb_device and self.profile:
+            emulator = self.profile.emulator
+            if emulator:
+                self.adb_device = \
+                    emulator if type(emulator) is str else "emulator"
+
+            device = self.profile.device
+            if device:
+                self.adb_device = device if type(device) is str else "device"
+
+        if self.adb_device == "emulator":
+            adb_args.append("-e")
+        elif self.adb_device == "device":
+            adb_args.append("-d")
+        elif self.adb_device:
+            adb_args.extend(["-s", self.adb_device])
+
+        return adb_args
+
+    def get_logcat_args(self):
+        logcat_args = self.logcat_args[:]
+        if self.logcat_format:
+            logcat_args.extend(["-v", self.logcat_format])
+        return logcat_args
 
     def start(self):
         if self.profile:
@@ -154,13 +175,15 @@ class LogcatColor(object):
             if buffers:
                 for b in buffers: self.logcat_args.extend(["-b", b])
 
+            if self.profile.format and not self.logcat_format:
+                self.logcat_format = self.profile.format
+
         # if someone is piping, use stdin as input. if not, invoke adb logcat
         input = sys.stdin
         if os.isatty(sys.stdin.fileno()):
-            adb_command = [self.get_adb()]
-            adb_command.extend(self.adb_args)
+            adb_command = self.get_adb_args()
             adb_command.append("logcat")
-            adb_command.extend(self.logcat_args)
+            adb_command.extend(self.get_logcat_args())
             input = Popen(adb_command, stdout=PIPE).stdout
 
         reader = LogcatReader(input, self.config, profile=self.profile,

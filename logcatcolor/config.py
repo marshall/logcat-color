@@ -8,9 +8,6 @@ import traceback
 
 class LogcatColorConfig(object):
     DEFAULT_LAYOUT = "brief"
-    DEFAULT_PID_WIDTH = 8
-    DEFAULT_TAG_WIDTH = 20
-    DEFAULT_PRIORITY_WIDTH = 3
     DEFAULT_WRAP = True
     DEFAULT_ADB = None
 
@@ -61,22 +58,16 @@ class LogcatColorConfig(object):
         return os.path.join(home_dir, ".logcat-color")
 
     def load_config(self):
-        if "wrap" in self.config:
-            self.wrap = self.config["wrap"]
-        else:
-            self.wrap = self.options.wrap
+        if self.options.wrap is None:
+            self.wrap = True
+            if "wrap" in self.config:
+                self.wrap = self.config["wrap"]
 
     def get_default_layout(self):
         return self.config.get("default_layout", self.DEFAULT_LAYOUT)
 
-    def get_pid_width(self):
-        return self.config.get("pid_width", self.DEFAULT_PID_WIDTH)
-
-    def get_tag_width(self):
-        return self.config.get("tag_width", self.DEFAULT_TAG_WIDTH)
-
-    def get_priority_width(self):
-        return self.config.get("priority_width", self.DEFAULT_PRIORITY_WIDTH)
+    def get_column_width(self, column):
+        return self.config.get(column.NAME + "_width", column.DEFAULT_WIDTH)
 
     def get_wrap(self):
         return self.config.get("wrap", self.DEFAULT_WRAP)

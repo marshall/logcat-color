@@ -8,7 +8,10 @@ class Profile(object):
         return cls.__profiles__.get(name, None)
 
     def __init__(self, name=None, tags=None, priorities=None, filters=None,
-            buffers=None, wrap=True):
+            buffers=None, wrap=True, device=None, emulator=None, format=None):
+        if not name:
+            raise Exception("Profile is missing a name")
+
         self.name = name
         self.__profiles__[name] = self
 
@@ -17,6 +20,9 @@ class Profile(object):
         self.init_filters(filters)
         self.buffers = buffers
         self.wrap = wrap
+        self.device = device
+        self.emulator = emulator
+        self.format = format
 
     def init_tags(self, tags):
         self.tags = None
@@ -49,20 +55,23 @@ class Profile(object):
 
     def regex_filter(self, regex):
         pattern = re.compile(regex)
-        return lambda tag, priority, message: re.search(pattern, message)
+        def __filter(data):
+            if "message" not in data:
+                return True
+            return re.search(pattern, data["message"])
+        return __filter
 
-    def include(self, tag, priority, message):
-        if self.tags and tag not in self.tags:
+    def include(self, data):
+        if self.tags and data["tag"] not in self.tags:
             return False
 
-        if self.priorities and priority not in self.priorities:
+        if self.priorities and data["priority"] not in self.priorities:
             return False
 
         if self.filters:
             for filter in self.filters:
-                if filter(tag, priority, message):
-                    return True
-            return False
+                if not filter(data):
+                    return False
 
         return True
 

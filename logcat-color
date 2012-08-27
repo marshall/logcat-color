@@ -42,7 +42,7 @@ class LogcatColor(object):
             self.layout = "raw"
         elif self.options.format:
             self.layout = self.options.format
-        elif self.profile.format:
+        elif self.profile and self.profile.format:
             self.layout = self.profile.format
 
     def get_term_width(self):

@@ -11,6 +11,13 @@ the Android SDK.
     $ easy_install logcat-color
 
 **Installation from source** (requires setuptools, may require sudo)
+
+To get the source, simply [download and extract a release tarball](https://github.com/marshall/logcat-color/downloads).
+Alternatively, you can clone the logcat-color git repository directly:
+    
+    $ git clone git://github.com/marshall/logcat-color.git
+
+To install logcat-color from the source directory, run:
     
     $ python setup.py install
 

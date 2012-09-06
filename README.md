@@ -1,5 +1,6 @@
 # logcat-color
-A colorful alternative to the `adb logcat` command from the Android SDK.
+A colorful and highly configurable alternative to the `adb logcat` command from
+the Android SDK.
 
 # Installation
 
@@ -27,7 +28,7 @@ Pipe logcat-color to egrep for only the tags you care about
     
     $ logcat-color -e | egrep '(Tag1|Tag2)'
 
-Run logcat-color with a custom profile for filters, colors, and custom arguments (see [Profiles](#profiles))
+Run logcat-color with a [custom profile](#profiles) for [filters](#profile_filters), colors, and custom arguments)
     
     $ logcat-color <profile-name>
 
@@ -51,6 +52,10 @@ and types available to it.
 
 **Sample .logcat-color**
     
+    # Full path to adb, default is to look at the environment variable ADB, or
+    # fall back on using "adb" from the system PATH
+    adb = "/path/to/adb"
+
     # Width of the TAG column, default is 20
     tag_width = 20
 
@@ -66,38 +71,124 @@ and types available to it.
 
 ## <a id="profiles"></a> Profiles
 
-Profiles allow logcat-color to customize logging even further. 
+Profiles live in the [logcat-color configuration file](#configuration), and
+allow logcat-color to customize ADB and logging even further.
 
 In short, a single Profile can:
-- Filter certain tags, priorities, or messages
-- Use certain command line arguments
-- Customized display and color configuration
 
-Profiles live in the [logcat-color configuration file](#configuration). Here is an example:
+* [Filter](#profile_filters) based on arbitrary log data.
+* Use custom adb command line arguments, devices, and log formats
+* Customize display and color configuration.
+
+A profile is created by simply calling the Profile python constructor with
+various named arguments. The only required argument is the Profile's `name`:
+
+    Profile(name = "myProfile", ...)
+
+You can then have logcat-color use this profile by providing it on the command
+line. For example:
+    
+    $ logcat-color myProfile
+
+To customize the Profile, simply pass more named arguments to the `Profile`
+constructor. This is a list of all the currently supported named arguments:
+
+* `buffers`: A list of logcat buffers to display. By default logcat uses only the
+  `main` system buffer. See the [Android documentation for logcat buffers](http://developer.android.com/tools/debugging/debugging-log.html#alternativeBuffers)
+  for more information.
+* `device`: Specifies the device this profile is intended for.
+  Valid values: True (connect to first available device), or a string with
+  the serial ID of the device as reported by `adb devices`
+* `emulator`: Similar to `device`, but providing `True` connects to the first
+  available emulator instead.
+* `filters`: A list or tuple of [custom filters](#profile_filters).
+* `format`: The logcat format to use. By default logcat uses the `brief` format.
+  See the [Android documentation for logcat formats](http://developer.android.com/tools/debugging/debugging-log.html#outputFormat)
+  for more information.
+* `name`: The profile name (required).
+* `priorities`: A list or tuple of priority levels. logcat-color will exclude
+  any messages that contain priorities not in this list.
+  Valid priorities: `V` (verbose), `D` (debug), `I` (info), `W` (warn),
+  `E` (error), `F` (fatal).
+* `tags`: A list, tuple, or dict of logcat tag names. logcat-color will exclude
+  any messages that contain tags not in this list. When a dict is used, you can
+  also assign custom colors to each tag.
+  Valid tag colors: `RED`, `GREEN`, `YELLOW`, `BLUE`, `MAGENTA`, `CYAN`, `WHITE`
+* `wrap`: Whether or not to wrap the message column. Default is `True`.
+
+Here is an extended example:
     
     Profile(name = "radio",
+        # Specify a custom device
+        device = "device_name",
+
         # Enable both radio and main buffers (-b radio -b main)
         buffers = ("radio", "main"),
 
         # Only pay attention to the RIL and RILC tags, and give them custom colors
-        # Valid colors: RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE
         tags = {
             "RIL": BLUE,
-            "RILC": GREEN 
+            "RILC": GREEN
         },
 
         # Only look at these priority levels
-        # Valid priorities: V (verbose), D (debug), I (info), W (warn), E (error), F (fatal)
-        priorities = [ "I", "W", "E" ],
+        priorities = ("I", "W", "E"),
 
-        # Only pay attention to log messages that match any of these filters
-        # Each string is compiled as a regular expression.
-        # Functions are called with the tag, priority, and message and
-        # must return True to include the message in the log output.
-        filters = [
+        # Use threadtime format to get date/time stamps and thread IDs
+        format = "threadtime",
+
+        # Some custom filters
+        filters = (
           r"My Custom Regex",
-          lambda tag, priority, message: message == "Custom filter"
-        ]
+          lambda data: data["message"] == "Custom filter"
+        )
+    )
+
+### <a id="profile_filters"></a> Filters
+
+Filters come in 2 variations:
+
+#### Regex filters
+
+When the regex matches the message portion of a line of logcat output, that line
+will then be matched against the next filter. For example:
+    
+    # A negated regex -- exclude any line that matches this
+    def negatedRegex(regex):
+      return r"^(?!.*" + regex + ").*$"
+
+    Profile(...
+      filters = (negatedRegex(r"debugging: "), r"my custom regex")
+    )
+
+#### Function filters
+When the function returns `True` for a line of log output, that line will then
+be matched against the next filter. The function will be passed a `data`
+dictionary that contains all of the log data:
+    * `"priority"`: One of the logcat priorities: `V` (verbose), `D` (debug),
+      `I` (info), `W` (warn), `E` (error), `F` (fatal).
+      Availability: All logcat formats.
+    * `"message"`: The log message itself
+      Availability: All logcat formats.
+    * `"tag"`: The Tag of this log message.
+      Availability: All logcat formats except `thread`.
+    * `"pid"`: The PID of the process that logged the message (in string form).
+      Availability: All logcat formats except `tag`.
+    * `"tid"`: The ID of the thread that logged the message (in string form).
+      Availability: `thread`, `threadtime`, and `long` formats.
+    * `"date"`: The date of the log message (in string form).
+      Availability: `time`, `threadtime`, and `long` formats.
+    * `"time"`: The time of the log message (in string form).
+      Availability: `time`, `threadtime`, and `long` formats.
+
+An example of a function filter:
+    
+    # only include messages from my app's tags
+    def onlyMyApp(data):
+        return data["tag"] in ("MyAppTag1", "MyAppTag2")
+
+    Profile(...
+        filters = (onlyMyApp)
     )
 
 ## Screenshot

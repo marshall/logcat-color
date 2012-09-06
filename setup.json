@@ -1,6 +1,6 @@
 {
     "name": "logcat-color",
-    "version": "0.3",
+    "version": "0.4",
     "description": "A colorful alternative to \"adb logcat\"",
     "author": "Marshall Culpepper",
     "author_email": "marshall.law@gmail.com",

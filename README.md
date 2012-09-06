@@ -146,7 +146,16 @@ Here is an extended example:
 
 ### <a id="profile_filters"></a> Filters
 
-Filters come in 2 variations:
+Filters allow your profile to have complete control over what log data you
+actually see when you run logcat-color.
+
+logcat-color will run each line of log output through the list of filters in
+your profile. Only when the entire list of filters have accepted the line will
+it actually be displayed. This is the equivalent of logically ANDing the results
+of each filter. If you require different logic, you should use a custom function
+filter, and combine the results of various filters manually.
+
+There are currently two different kinds of filters:
 
 #### Regex filters
 
@@ -162,30 +171,38 @@ will then be matched against the next filter. For example:
     )
 
 #### Function filters
+
 When the function returns `True` for a line of log output, that line will then
 be matched against the next filter. The function will be passed a `data`
 dictionary that contains all of the log data:
-    * `"priority"`: One of the logcat priorities: `V` (verbose), `D` (debug),
-      `I` (info), `W` (warn), `E` (error), `F` (fatal).
-      Availability: All logcat formats.
-    * `"message"`: The log message itself
-      Availability: All logcat formats.
-    * `"tag"`: The Tag of this log message.
-      Availability: All logcat formats except `thread`.
-    * `"pid"`: The PID of the process that logged the message (in string form).
-      Availability: All logcat formats except `tag`.
-    * `"tid"`: The ID of the thread that logged the message (in string form).
-      Availability: `thread`, `threadtime`, and `long` formats.
-    * `"date"`: The date of the log message (in string form).
-      Availability: `time`, `threadtime`, and `long` formats.
-    * `"time"`: The time of the log message (in string form).
-      Availability: `time`, `threadtime`, and `long` formats.
+
+* `"priority"`: One of the logcat priorities: `V` (verbose), `D` (debug),
+  `I` (info), `W` (warn), `E` (error), `F` (fatal).
+  Availability: All logcat formats.
+* `"message"`: The log message itself
+  Availability: All logcat formats.
+* `"tag"`: The Tag of this log message.
+  Availability: All logcat formats except `thread`.
+* `"pid"`: The PID of the process that logged the message (in string form).
+  Availability: All logcat formats except `tag`.
+* `"tid"`: The ID of the thread that logged the message (in string form).
+  Availability: `thread`, `threadtime`, and `long` formats.
+* `"date"`: The date of the log message (in string form).
+  Availability: `time`, `threadtime`, and `long` formats.
+* `"time"`: The time of the log message (in string form).
+  Availability: `time`, `threadtime`, and `long` formats.
+
+Notice that many of these fields are conditional based on the logcat output
+format. Be careful when constructing the logic of function filters, as the field
+you are filtering may not exist in the message!
 
 An example of a function filter:
     
     # only include messages from my app's tags
     def onlyMyApp(data):
-        return data["tag"] in ("MyAppTag1", "MyAppTag2")
+        # Tag isn't available in "thread" format, so use get() to be safe and
+        # return None instead of raising an exception
+        return data.get("tag") in ("MyAppTag1", "MyAppTag2")
 
     Profile(...
         filters = (onlyMyApp)

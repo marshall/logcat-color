@@ -27,12 +27,6 @@ class LogcatColorConfig(object):
                 self.report_config_error()
                 sys.exit(1)
 
-            # clean up builtins and globals from self.config
-            del self.config["__builtins__"]
-            del self.config["Profile"]
-            for color in TagColumn.COLOR_MAP.keys():
-                del self.config[color]
-
         self.load_config()
 
     def report_config_error(self):

@@ -25,6 +25,7 @@ class Layout(object):
 
         self.column_count = len(self.columns)
 
+        self.regex = None
         if self.PATTERN:
             self.regex = re.compile(self.PATTERN)
 
@@ -86,6 +87,8 @@ class Layout(object):
 
 class RawLayout(Layout):
     NAME = "raw"
+    PATTERN = None
+    COLUMNS = None
     def layout_columns(self, line):
        return line
 

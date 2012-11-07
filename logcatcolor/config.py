@@ -15,6 +15,7 @@ class LogcatColorConfig(object):
         self.options = options
         self.path = options.config or self.get_default_config()
         self.filters = {}
+        self.wrap = True
 
         self.config = { "Profile":  Profile }
         self.config.update(TagColumn.COLOR_MAP)

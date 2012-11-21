@@ -1,5 +1,7 @@
 import re
 
+RegexType = type(re.compile(""))
+
 class Profile(object):
     __profiles__ = {}
 
@@ -47,36 +49,41 @@ class Profile(object):
         if not filters:
             return
 
+        if not isinstance(filters, (list, tuple)):
+            filters = [filters]
+
         for filter in filters:
-            if isinstance(filter, str):
+            if isinstance(filter, (str, RegexType)):
                 self.filters.append(self.regex_filter(filter))
             else:
                 self.filters.append(filter)
 
     def regex_filter(self, regex):
-        pattern = re.compile(regex)
+        pattern = regex
+        if not isinstance(regex, RegexType):
+            pattern = re.compile(regex)
+
         def __filter(data):
             if "message" not in data:
                 return True
-            return re.search(pattern, data["message"])
+            return pattern.search(data["message"])
         return __filter
 
     def include(self, data):
-        if self.tags and data["tag"] not in self.tags:
+        if not data:
+            raise Exception("data should not be None")
+
+        if self.tags and data.get("tag") not in self.tags:
             return False
 
-        if self.priorities and data["priority"] not in self.priorities:
+        if self.priorities and data.get("priority") not in self.priorities:
             return False
 
-        if self.filters:
-            for filter in self.filters:
-                if not filter(data):
-                    return False
+        if not self.filters:
+            return True
+
+        for filter in self.filters:
+            if not filter(data):
+                return False
 
         return True
-
-    def get_buffers(self):
-        return self.buffers
-
-    def get_tag_colors(self):
-        return self.tag_colors

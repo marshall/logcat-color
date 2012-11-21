@@ -1,3 +1,11 @@
+"""
+logcat-color
+
+Copyright 2012, Marshall Culpepper
+Licensed under the Apache License, Version 2.0
+
+Columns for displaying logcat log data
+"""
 import colorama
 from colorama import Fore, Back, Style
 import StringIO
@@ -62,7 +70,7 @@ class TagColumn(Column):
 
         tag_colors = None
         if layout.profile:
-            tag_colors = layout.profile.get_tag_colors()
+            tag_colors = layout.profile.tag_colors
 
         self.tag_colors = tag_colors or {}
         self.last_used = self.COLOR_MAP.values()[:]
@@ -117,7 +125,7 @@ class MessageColumn(Column):
     def __init__(self, layout):
         self.width = None
         self.left = layout.total_column_width
-        if layout.config.wrap and (not layout.profile or layout.profile.wrap):
+        if layout.config.get_wrap() and (not layout.profile or layout.profile.wrap):
             self.width = layout.width - self.left
 
     def format(self, message):

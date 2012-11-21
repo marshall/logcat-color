@@ -24,8 +24,8 @@ from logcatcolor.reader import LogcatReader
 
 class LogcatColor(object):
     def __init__(self):
-        self.width = self.get_term_width()
         self.parse_args()
+        self.width = self.get_term_width()
         self.config = LogcatColorConfig(self.options)
 
         self.profile = None
@@ -37,19 +37,21 @@ class LogcatColor(object):
         if not self.profile:
             self.logcat_args.extend(self.args)
 
-        self.layout = "brief"
+        self.format = None
+        if self.options.format:
+            self.format = self.options.format
+        elif self.profile and self.profile.format:
+            self.format = self.profile.format
+
+        self.layout = self.format
         if self.options.plain:
             self.layout = "raw"
-        elif self.options.format:
-            self.layout = self.options.format
-        elif self.profile and self.profile.format:
-            self.layout = self.profile.format
 
     def get_term_width(self):
-        stdout_fd = sys.stdout.fileno()
-        if os.isatty(stdout_fd):
+        out_fd = self.output.fileno()
+        if os.isatty(out_fd):
             # unpack the current terminal width / height
-            data = fcntl.ioctl(stdout_fd, termios.TIOCGWINSZ, '1234')
+            data = fcntl.ioctl(out_fd, termios.TIOCGWINSZ, '1234')
             height, width = struct.unpack('hh', data)
         else:
            # store a large width when the output of this script is being piped
@@ -70,6 +72,13 @@ class LogcatColor(object):
         parser.add_option("--no-wrap", action="store_false", dest="wrap",
             default=None, help="don't wrap console text into a column " +
                                "(makes for better copy/paste)")
+        parser.add_option("-i", "--input", metavar="FILE", dest="input",
+            default=None,
+            help="read input from FILE, instead of starting adb. this is " +
+                 "equivalent to piping FILE to logcat-color. (default: start " +
+                 "adb, and read from it's stdout)")
+        parser.add_option("-o", "--output", metavar="FILE", dest="output",
+            default=None, help="write output to FILE (default: stdout)")
 
         # ADB options
         parser.add_option("-d", "--device", action="store_const",
@@ -117,9 +126,19 @@ class LogcatColor(object):
         self.options = options
         self.args = args
 
+        if options.config and not os.path.isfile(options.config):
+            parser.error("Config file does not exist: %s" % options.config)
+
+        self.input = sys.stdin
+        if options.input:
+            self.input = open(options.input, "r")
+
+        self.output = sys.stdout
+        if options.output:
+            self.output = open(options.output, "w")
+
         self.adb_device = options.adb_device
         self.logcat_args = options.logcat_args or []
-        self.logcat_format = options.format
 
         if options.buffers:
             for buf in options.buffers:
@@ -165,29 +184,26 @@ class LogcatColor(object):
 
     def get_logcat_args(self):
         logcat_args = self.logcat_args[:]
-        if self.logcat_format:
-            logcat_args.extend(["-v", self.logcat_format])
+        if self.format:
+            logcat_args.extend(["-v", self.format])
         return logcat_args
 
     def start(self):
         if self.profile:
-            buffers = self.profile.get_buffers()
+            buffers = self.profile.buffers
             if buffers:
                 for b in buffers: self.logcat_args.extend(["-b", b])
 
-            if self.profile.format and not self.logcat_format:
-                self.logcat_format = self.profile.format
-
         # if someone is piping, use stdin as input. if not, invoke adb logcat
-        input = sys.stdin
-        if os.isatty(sys.stdin.fileno()):
+        if self.input.isatty():
             adb_command = self.get_adb_args()
             adb_command.append("logcat")
             adb_command.extend(self.get_logcat_args())
-            input = Popen(adb_command, stdout=PIPE).stdout
+            self.input = Popen(adb_command, stdout=PIPE).stdout
 
-        reader = LogcatReader(input, self.config, profile=self.profile,
-            layout=self.layout, width=self.width)
+        reader = LogcatReader(self.input, self.config, profile=self.profile,
+            format=self.format, layout=self.layout, writer=self.output,
+            width=self.width)
         try:
             asyncore.loop()
         except KeyboardInterrupt, e:

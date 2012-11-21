@@ -15,12 +15,15 @@ class LogcatColorConfig(object):
         self.options = options
         self.path = options.config or self.get_default_config()
         self.filters = {}
-        self.wrap = True
 
-        self.config = { "Profile":  Profile }
+        self.config = {
+            "Profile":  Profile,
+            "__file__": self.path
+        }
+
         self.config.update(TagColumn.COLOR_MAP)
 
-        if os.path.exists(self.path):
+        if os.path.exists(self.path) and os.path.isfile(self.path):
             # config file is just a python script that globals are imported from
             try:
                 execfile(self.path, self.config)
@@ -28,7 +31,7 @@ class LogcatColorConfig(object):
                 self.report_config_error()
                 sys.exit(1)
 
-        self.load_config()
+        self.post_load()
 
     def report_config_error(self):
         config_error = """
@@ -52,11 +55,9 @@ class LogcatColorConfig(object):
         home_dir = os.environ[env_key]
         return os.path.join(home_dir, ".logcat-color")
 
-    def load_config(self):
-        if self.options.wrap is None:
-            self.wrap = True
-            if "wrap" in self.config:
-                self.wrap = self.config["wrap"]
+    def post_load(self):
+        if self.options.wrap is not None:
+            self.config["wrap"] = self.options.wrap
 
     def get_default_layout(self):
         return self.config.get("default_layout", self.DEFAULT_LAYOUT)

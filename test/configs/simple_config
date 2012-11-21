@@ -1,0 +1,4 @@
+default_layout = "test"
+tag_width = 1
+wrap = False
+adb = "/path/to/adb"

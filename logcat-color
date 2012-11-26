@@ -23,8 +23,8 @@ from logcatcolor.profile import Profile
 from logcatcolor.reader import LogcatReader
 
 class LogcatColor(object):
-    def __init__(self):
-        self.parse_args()
+    def __init__(self, args=None):
+        self.parse_args(args)
         self.width = self.get_term_width()
         self.config = LogcatColorConfig(self.options)
 
@@ -59,7 +59,7 @@ class LogcatColor(object):
 
         return width
 
-    def parse_args(self):
+    def parse_args(self, args=None):
         parser = optparse.OptionParser()
 
         # logcat-color options
@@ -122,7 +122,7 @@ class LogcatColor(object):
                  " brief, process, tag, raw, time, threadtime, long" +
                  " (default: brief)")
 
-        (options, args) = parser.parse_args()
+        (options, args) = parser.parse_args(args)
         self.options = options
         self.args = args
 
@@ -185,7 +185,8 @@ class LogcatColor(object):
     def get_logcat_args(self):
         logcat_args = self.logcat_args[:]
         if self.format:
-            logcat_args.extend(["-v", self.format])
+            # put format in front in case custom filters are used
+            logcat_args[0:0] = ["-v", self.format]
         return logcat_args
 
     def start(self):

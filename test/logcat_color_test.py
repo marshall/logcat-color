@@ -8,6 +8,7 @@ import unittest
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 logcat_color = os.path.join(os.path.dirname(this_dir), "logcat-color")
+execfile(logcat_color)
 
 def logcat_color_test(*args, **kwargs):
     def run_logcat_color_test(fn):
@@ -135,4 +136,24 @@ class LogcatColorTest(unittest.TestCase):
         out_data = open(tmpout, "r").read()
         self.assertEqual(out_data, brief_data)
 
+    def test_logcat_options_with_filters(self):
+        # Make sure logcat flags come before filter arguments
+        # https://github.com/marshall/logcat-color/issues/5
+        lc = LogcatColor(args=["-v", "time", "Tag1:V", "*:S", "--silent",
+            "--print-size", "--dump", "--clear"])
+        self.assertEqual(lc.format, "time")
 
+        args = lc.get_logcat_args()
+
+        self.assertEqual(len(args), 8)
+
+        format_index = args.index("-v")
+        self.assertTrue(format_index >= 0)
+        self.assertEqual(args[format_index+1], "time")
+        self.assertTrue("-s" in args)
+        self.assertTrue("-d" in args)
+        self.assertTrue("-g" in args)
+        self.assertTrue("-c" in args)
+
+        self.assertEqual(args[-2], "Tag1:V")
+        self.assertEqual(args[-1], "*:S")

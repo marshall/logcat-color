@@ -10,6 +10,7 @@ class LogcatColorConfig(object):
     DEFAULT_LAYOUT = "brief"
     DEFAULT_WRAP = True
     DEFAULT_ADB = None
+    DEFAULT_STAY_CONNECTED = False
 
     def __init__(self, options):
         self.options = options
@@ -58,6 +59,8 @@ class LogcatColorConfig(object):
     def post_load(self):
         if self.options.wrap is not None:
             self.config["wrap"] = self.options.wrap
+        if self.options.stay_connected is not None:
+            self.config["stay_connected"] = self.options.stay_connected
 
     def get_default_layout(self):
         return self.config.get("default_layout", self.DEFAULT_LAYOUT)
@@ -67,6 +70,9 @@ class LogcatColorConfig(object):
 
     def get_wrap(self):
         return self.config.get("wrap", self.DEFAULT_WRAP)
+
+    def get_stay_connected(self):
+        return self.config.get("stay_connected", self.DEFAULT_STAY_CONNECTED)
 
     def get_adb(self):
         return self.config.get("adb", self.DEFAULT_ADB)

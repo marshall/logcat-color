@@ -14,9 +14,11 @@ import fcntl
 import optparse
 import os
 import struct
-from subprocess import Popen, PIPE
 import sys
 import termios
+
+from colorama import Fore, Back, Style
+from subprocess import check_call, Popen, PIPE
 
 from logcatcolor.config import LogcatColorConfig
 from logcatcolor.profile import Profile
@@ -72,6 +74,10 @@ class LogcatColor(object):
         parser.add_option("--no-wrap", action="store_false", dest="wrap",
             default=None, help="don't wrap console text into a column " +
                                "(makes for better copy/paste)")
+        parser.add_option("--stay-connected", action="store_true", default=None,
+            dest="stay_connected", help="keep logcat-color running when the "
+                                        "device disconnects, and automatically "
+                                        "wait for the device to reconnect")
         parser.add_option("-i", "--input", metavar="FILE", dest="input",
             default=None,
             help="read input from FILE, instead of starting adb. this is " +
@@ -187,28 +193,60 @@ class LogcatColor(object):
         if self.format:
             # put format in front in case custom filters are used
             logcat_args[0:0] = ["-v", self.format]
-        return logcat_args
 
-    def start(self):
         if self.profile:
             buffers = self.profile.buffers
             if buffers:
-                for b in buffers: self.logcat_args.extend(["-b", b])
+                for b in buffers: logcat_args.extend(["-b", b])
 
-        # if someone is piping, use stdin as input. if not, invoke adb logcat
-        if self.input.isatty():
-            adb_command = self.get_adb_args()
-            adb_command.append("logcat")
-            adb_command.extend(self.get_logcat_args())
-            self.input = Popen(adb_command, stdout=PIPE).stdout
+        return logcat_args
 
+    def start_logcat(self):
+        adb_command = self.get_adb_args()
+        adb_command.append("logcat")
+        adb_command.extend(self.get_logcat_args())
+        self.input = Popen(adb_command, stdout=PIPE).stdout
+
+    def init_reader(self):
         reader = LogcatReader(self.input, self.config, profile=self.profile,
             format=self.format, layout=self.layout, writer=self.output,
             width=self.width)
+
+    def start(self):
+        # if someone is piping, use stdin as input. if not, invoke adb logcat
+        if self.input.isatty():
+            self.start_logcat()
+
+        self.init_reader()
+
+    def loop(self):
         try:
-            asyncore.loop()
+            self.start()
+            while True:
+                asyncore.loop()
+                if not self.config.get_stay_connected():
+                    break
+                self.wait_for_device()
+                self.start_logcat()
+                self.init_reader()
         except KeyboardInterrupt, e:
             pass
 
+    WAIT_FOR_DEVICE = Fore.WHITE + Back.BLACK + Style.DIM + \
+                      "--- Waiting for device" + Style.RESET_ALL + \
+                      Fore.BLUE + Back.BLACK + Style.DIM + " %s" +  Style.RESET_ALL + \
+                      Fore.WHITE + Back.BLACK + Style.DIM + "---" + Style.RESET_ALL
+
+    def wait_for_device(self):
+        command = self.get_adb_args()
+        command.append("wait-for-device")
+
+        device_str = ""
+        if self.adb_device:
+            device_str = "\"%s\" " % self.adb_device
+
+        print self.WAIT_FOR_DEVICE % device_str
+        check_call(command)
+
 if __name__ == "__main__":
-    LogcatColor().start()
+    LogcatColor().loop()

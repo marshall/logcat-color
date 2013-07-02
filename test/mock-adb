@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+import argparse
+import json
+import os
+import sys
+import time
+
+class MockAdb(object):
+    def __init__(self, args, command_args):
+        self.results_data = {}
+        for attr, value in args.__dict__.iteritems():
+            setattr(self, attr, value)
+            self.results_data[attr] = value
+
+        self.results_data["command_args"] = self.command_args = command_args
+
+    def run(self):
+        cmd = self.command.replace("-", "_")
+        if hasattr(self, cmd):
+            getattr(self, cmd)()
+
+        data = []
+        if os.path.exists(self.results):
+            try:
+                data = json.loads(open(self.results, "r").read())
+            except: pass
+
+        data.append(self.results_data)
+
+        with open(self.results, "w") as f:
+            f.write(json.dumps(data))
+
+    def wait_for_device(self):
+        time.sleep(0.1)
+
+    def logcat(self):
+        print open(self.log, "r").read()
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--log")
+    parser.add_argument("--results")
+    parser.add_argument("command")
+    parser.add_argument("-d", dest="device", action="store_true", default=False)
+    parser.add_argument("-e", dest="emulator", action="store_true", default=False)
+    parser.add_argument("-s", dest="serial", default=None)
+    MockAdb(*parser.parse_known_args()).run()
+
+if __name__ == "__main__":
+    main()

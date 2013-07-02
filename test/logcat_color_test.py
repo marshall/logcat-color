@@ -1,4 +1,5 @@
 import common
+import json
 import os
 from StringIO import StringIO
 from subprocess import Popen, PIPE
@@ -6,9 +7,8 @@ import sys
 import tempfile
 import unittest
 
+from common import LogcatColor, MockAdbLogcatColor
 this_dir = os.path.dirname(os.path.abspath(__file__))
-logcat_color = os.path.join(os.path.dirname(this_dir), "logcat-color")
-execfile(logcat_color)
 
 def logcat_color_test(*args, **kwargs):
     def run_logcat_color_test(fn):
@@ -31,14 +31,14 @@ os.close(tmpfd)
 class LogcatColorTest(unittest.TestCase):
     DEBUG = False
 
-    @classmethod
-    def tearDownClass(cls):
+    def setUp(self):
+        # Clear out our temporary output file before each test
         global tmpout
-        os.unlink(tmpout)
+        with open(tmpout, "w") as f: f.write("")
 
     def start_logcat_color(self, *args, **kwargs):
         args = list(args)
-        args.insert(0, logcat_color)
+        args.insert(0, common.logcat_color)
         if "config" in kwargs:
             args[1:1] = ["--config", kwargs["config"]]
             del kwargs["config"]
@@ -140,7 +140,7 @@ class LogcatColorTest(unittest.TestCase):
         # Make sure logcat flags come before filter arguments
         # https://github.com/marshall/logcat-color/issues/5
         lc = LogcatColor(args=["-v", "time", "Tag1:V", "*:S", "--silent",
-            "--print-size", "--dump", "--clear"])
+                               "--print-size", "--dump", "--clear"])
         self.assertEqual(lc.format, "time")
 
         args = lc.get_logcat_args()
@@ -157,3 +157,26 @@ class LogcatColorTest(unittest.TestCase):
 
         self.assertEqual(args[-2], "Tag1:V")
         self.assertEqual(args[-1], "*:S")
+
+    def test_stay_connected(self):
+        lc = MockAdbLogcatColor(BRIEF_LOG, tmpout,
+                                args=["-s", "serial123", "--stay-connected",
+                                      "--config", EMPTY_CONFIG],
+                                max_wait_count=3)
+        self.assertEqual(lc.config.get_stay_connected(), True)
+
+        lc.loop()
+        self.assertEqual(lc.wait_count, 3)
+
+        results = json.loads(open(tmpout, "r").read())
+        self.assertEqual(len(results), 6)
+
+        logcat_results = filter(lambda d: d["command"] == "logcat", results)
+        self.assertEqual(len(logcat_results), 3)
+
+        wait_results = filter(lambda d: d["command"] == "wait-for-device", results)
+        self.assertEquals(len(wait_results), 3)
+
+        for r in results:
+            self.assertEqual(r["serial"], "serial123")
+

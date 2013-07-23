@@ -10,7 +10,8 @@ class Profile(object):
         return cls.__profiles__.get(name, None)
 
     def __init__(self, name=None, tags=None, priorities=None, filters=None,
-            buffers=None, wrap=True, device=None, emulator=None, format=None):
+            buffers=None, wrap=True, device=None, emulator=None, format=None,
+            packages=None):
         if not name:
             raise Exception("Profile is missing a name")
 
@@ -20,11 +21,23 @@ class Profile(object):
         self.init_tags(tags)
         self.init_priorities(priorities)
         self.init_filters(filters)
+        selt.init_packages(packages)
         self.buffers = buffers
         self.wrap = wrap
         self.device = device
         self.emulator = emulator
         self.format = format
+
+    def init_packages(self, packages):
+
+        self.pid_map = {}
+        self.package_search = {}
+        
+        if not packages:
+            for package in packages:
+                search_string = 'Start proc ' + package
+                regex = re.compile(search_string + ".*?pid=(\\d+)", re.IGNORECASE|re.DOTALL)
+                self.package_search[package] = (search_string, regex)
 
     def init_tags(self, tags):
         self.tags = None
@@ -69,14 +82,30 @@ class Profile(object):
             return pattern.search(data["message"])
         return __filter
 
+    def process_new_pid(self, data):
+        string = data.get('data')
+        if string.startwith('Start proc'):
+            for package in self.package_search:
+                if string.startswith(self.package_search[package][0]):
+                    match = self.package_search[package][0].search(string)
+                    if match:
+                        self.pid_map[package] = match.group(1)
+                        #Testing
+                        print("Setting new package ({0}) pid ({1})".format(package, match.group(1)) )
+
     def include(self, data):
         if not data:
             raise Exception("data should not be None")
+
+        self.process_new_pid(data)  #process pid
 
         if self.tags and data.get("tag") not in self.tags:
             return False
 
         if self.priorities and data.get("priority") not in self.priorities:
+            return False
+
+        if self.package_search and data.get("pid") not in self.pid_map.values():
             return False
 
         if not self.filters:

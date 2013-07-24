@@ -122,6 +122,8 @@ constructor. This is a list of all the currently supported named arguments:
   also assign custom colors to each tag.
   Valid tag colors: `RED`, `GREEN`, `YELLOW`, `BLUE`, `MAGENTA`, `CYAN`, `WHITE`
 * `wrap`: Whether or not to wrap the message column. Default is `True`.
+* `packages`: An array contains the packages that you want to filter on. 
+  this will be applied in addition to the filters.
 
 Here is an extended example:
     
@@ -148,7 +150,7 @@ Here is an extended example:
         filters = (
           r"My Custom Regex",
           lambda data: data["message"] == "Custom filter"
-        )
+        ),
     )
 
 ### <a id="profile_filters"></a> Filters
@@ -213,6 +215,21 @@ An example of a function filter:
 
     Profile(...
         filters = (onlyMyApp)
+    )
+
+### Package Filters
+
+Then you only care about a few (or one) application this will pass all
+massages to you by that application. 
+
+*Note*: This will require the application's startup message to accessable 
+via the current logback trace. The best bet it to start logcat-color then
+start the app.
+
+An example of package filters
+
+    Profile(...
+        packages = [ "com.android.example" ]
     )
 
 ## Screenshot

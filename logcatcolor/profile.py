@@ -21,7 +21,7 @@ class Profile(object):
         self.init_tags(tags)
         self.init_priorities(priorities)
         self.init_filters(filters)
-        selt.init_packages(packages)
+        self.init_packages(packages)
         self.buffers = buffers
         self.wrap = wrap
         self.device = device
@@ -33,7 +33,7 @@ class Profile(object):
         self.pid_map = {}
         self.package_search = {}
         
-        if not packages:
+        if packages:
             for package in packages:
                 search_string = 'Start proc ' + package
                 regex = re.compile(search_string + ".*?pid=(\\d+)", re.IGNORECASE|re.DOTALL)
@@ -83,15 +83,13 @@ class Profile(object):
         return __filter
 
     def process_new_pid(self, data):
-        string = data.get('data')
-        if string.startwith('Start proc'):
+        string = data.get('message')
+        if string and string.startswith('Start proc'):
             for package in self.package_search:
                 if string.startswith(self.package_search[package][0]):
-                    match = self.package_search[package][0].search(string)
+                    match = self.package_search[package][1].search(string)
                     if match:
                         self.pid_map[package] = match.group(1)
-                        #Testing
-                        print("Setting new package ({0}) pid ({1})".format(package, match.group(1)) )
 
     def include(self, data):
         if not data:

@@ -122,7 +122,7 @@ constructor. This is a list of all the currently supported named arguments:
   also assign custom colors to each tag.
   Valid tag colors: `RED`, `GREEN`, `YELLOW`, `BLUE`, `MAGENTA`, `CYAN`, `WHITE`
 * `wrap`: Whether or not to wrap the message column. Default is `True`.
-* `packages`: An array contains the packages that you want to filter on. 
+* `packages`: An array containing the packages that you want to filter on. 
   this will be applied in addition to the filters.
 
 Here is an extended example:
@@ -219,10 +219,10 @@ An example of a function filter:
 
 ### Package Filters
 
-Then you only care about a few (or one) application this will pass all
-massages to you by that application. 
+When you only care about a few (or one) application this will pass all
+messages to you by that application. 
 
-*Note*: This will require the application's startup message to accessable 
+*Note*: This will require the application's startup message to be accessible 
 via the current logback trace. The best bet it to start logcat-color then
 start the app.
 

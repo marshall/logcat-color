@@ -86,10 +86,9 @@ class Profile(object):
         string = data.get('message')
         if string and string.startswith('Start proc'):
             for package in self.package_search:
-                if string.startswith(self.package_search[package][0]):
-                    match = self.package_search[package][1].search(string)
-                    if match:
-                        self.pid_map[package] = match.group(1)
+                match = self.package_search[package][1].search(string)
+                if match:
+                    self.pid_map[package] = match.group(1)
 
     def include(self, data):
         if not data:

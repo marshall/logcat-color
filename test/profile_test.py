@@ -15,3 +15,8 @@ class ProfileTest(unittest.TestCase):
         profile = Profile(name = 'package_filt', packages = ['com.example.test'])
         self.assertFalse(profile.include({'message' : 'Start proc com.example.test for activity tw.com.xxxx.android.yyyy/.333Activity: pid=123456 uid=10105 gids={3003}'}))
         self.assertTrue(profile.include({'pid' : '123456', 'message' : 'foo bar'}))
+
+    def test_empty_package_will_still_work(self):
+        profile = Profile(name = 'package_filt')
+        self.assertTrue(profile.include({'message' : 'Start proc com.example.test for activity tw.com.xxxx.android.yyyy/.333Activity: pid=123456 uid=10105 gids={3003}'}))
+

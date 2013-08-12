@@ -2,6 +2,9 @@
 A colorful and highly configurable alternative to the `adb logcat` command from
 the Android SDK.
 
+**Note**: logcat-color is targetted at OS X and Linux, and does not currently
+work in Windows.
+
 # Installation
 
 **Installation with pip / easy_install** (may require sudo)

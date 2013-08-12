@@ -10,6 +10,7 @@ sys.path.append(logcat_color_dir)
 from format_test import *
 from config_test import *
 from logcat_color_test import *
+from profile_test import *
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,9 +9,9 @@ work in Windows.
 
 **Installation with pip / easy_install** (may require sudo)
     
-    $ pip install logcat-color
+    $ [sudo] pip install logcat-color
     .. or ..
-    $ easy_install logcat-color
+    $ [sudo] easy_install logcat-color
 
 **Installation from source** (requires setuptools, may require sudo)
 

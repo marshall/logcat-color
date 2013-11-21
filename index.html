@@ -1,0 +1,343 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>logcat-color by marshall</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/marshall/logcat-color">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/marshall/logcat-color/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/marshall/logcat-color/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>logcat-color</h1>
+          <p>A colorful and highly configurable alternative to the standard &quot;adb logcat&quot; command from the Android SDK</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/marshall">marshall</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+        </div>
+
+        <p><strong>Note</strong>: logcat-color is targetted at OS X and Linux, and does not currently
+work in Windows.</p>
+
+<h1>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h1>
+
+<p><strong>Installation with pip / easy_install</strong> (may require sudo)</p>
+
+<pre><code>$ [sudo] pip install logcat-color
+.. or ..
+$ [sudo] easy_install logcat-color
+</code></pre>
+
+<p><strong>Installation from source</strong> (requires setuptools, may require sudo)</p>
+
+<p>To get the source, simply <a href="https://github.com/marshall/logcat-color/downloads">download and extract a release tarball</a>.
+Alternatively, you can clone the logcat-color git repository directly:</p>
+
+<pre><code>$ git clone git://github.com/marshall/logcat-color.git
+</code></pre>
+
+<p>To install logcat-color from the source directory, run:</p>
+
+<pre><code>$ python setup.py install
+</code></pre>
+
+<h2>
+<a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h2>
+
+<p>Run and colorify <code>adb logcat</code></p>
+
+<pre><code>$ logcat-color
+</code></pre>
+
+<p>Colorify an old logcat text file you have laying around</p>
+
+<pre><code>$ logcat-color &lt; /path/to/my.log
+</code></pre>
+
+<p>Pipe logcat-color to egrep for only the tags you care about</p>
+
+<pre><code>$ logcat-color -e | egrep '(Tag1|Tag2)'
+</code></pre>
+
+<p>Run logcat-color with a <a href="#profiles">custom profile</a> for <a href="#profile_filters">filters</a>, colors, and custom arguments)</p>
+
+<pre><code>$ logcat-color &lt;profile-name&gt;
+</code></pre>
+
+<p>logcat-color also supports most of the standard adb / logcat arguments, making it a suitable full-time replacement for <code>adb logcat</code></p>
+
+<pre><code>$ alias logcat=/path/to/logcat-color
+$ logcat -e
+$ logcat -d
+$ logcat -s 123456789 -b radio -b main
+</code></pre>
+
+<p>For command line usage documentation:</p>
+
+<pre><code>$ logcat-color --help
+</code></pre>
+
+<h2>
+<a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a><a></a>Configuration</h2>
+
+<p>logcat-color supports a configuration file at <code>$HOME/.logcat-color</code></p>
+
+<p>The configuration file is simply a python script, with a few interesting variables
+and types available to it.</p>
+
+<p><strong>Sample .logcat-color</strong></p>
+
+<pre><code># Full path to adb, default is to look at the environment variable ADB, or
+# fall back on using "adb" from the system PATH
+adb = "/path/to/adb"
+
+# Width of the TAG column, default is 20
+tag_width = 20
+
+# Width of the PID column, default is 8
+pid_width = 8
+
+# Width of priority (log level) column, default is 3
+priority_width = 3
+
+# Whether or not to wrap the message inside a column. Setting this to False
+# enables easier copy/paste. default is True
+wrap = True
+</code></pre>
+
+<h2>
+<a name="-profiles" class="anchor" href="#-profiles"><span class="octicon octicon-link"></span></a><a></a> Profiles</h2>
+
+<p>Profiles live in the <a href="#configuration">logcat-color configuration file</a>, and
+allow logcat-color to customize ADB and logging even further.</p>
+
+<p>In short, a single Profile can:</p>
+
+<ul>
+<li>
+<a href="#profile_filters">Filter</a> based on arbitrary log data.</li>
+<li>Use custom adb command line arguments, devices, and log formats</li>
+<li>Customize display and color configuration.</li>
+</ul><p>A profile is created by simply calling the Profile python constructor with
+various named arguments. The only required argument is the Profile's <code>name</code>:</p>
+
+<pre><code>Profile(name = "myProfile", ...)
+</code></pre>
+
+<p>You can then have logcat-color use this profile by providing it on the command
+line. For example:</p>
+
+<pre><code>$ logcat-color myProfile
+</code></pre>
+
+<p>To customize the Profile, simply pass more named arguments to the <code>Profile</code>
+constructor. This is a list of all the currently supported named arguments:</p>
+
+<ul>
+<li>
+<code>buffers</code>: A list of logcat buffers to display. By default logcat uses only the
+<code>main</code> system buffer. See the <a href="http://developer.android.com/tools/debugging/debugging-log.html#alternativeBuffers">Android documentation for logcat buffers</a>
+for more information.</li>
+<li>
+<code>device</code>: Specifies the device this profile is intended for.
+Valid values: True (connect to first available device), or a string with
+the serial ID of the device as reported by <code>adb devices</code>
+</li>
+<li>
+<code>emulator</code>: Similar to <code>device</code>, but providing <code>True</code> connects to the first
+available emulator instead.</li>
+<li>
+<code>filters</code>: A list or tuple of <a href="#profile_filters">custom filters</a>.</li>
+<li>
+<code>format</code>: The logcat format to use. By default logcat uses the <code>brief</code> format.
+See the <a href="http://developer.android.com/tools/debugging/debugging-log.html#outputFormat">Android documentation for logcat formats</a>
+for more information.</li>
+<li>
+<code>name</code>: The profile name (required).</li>
+<li>
+<code>priorities</code>: A list or tuple of priority levels. logcat-color will exclude
+any messages that contain priorities not in this list.
+Valid priorities: <code>V</code> (verbose), <code>D</code> (debug), <code>I</code> (info), <code>W</code> (warn),
+<code>E</code> (error), <code>F</code> (fatal).</li>
+<li>
+<code>tags</code>: A list, tuple, or dict of logcat tag names. logcat-color will exclude
+any messages that contain tags not in this list. When a dict is used, you can
+also assign custom colors to each tag.
+Valid tag colors: <code>RED</code>, <code>GREEN</code>, <code>YELLOW</code>, <code>BLUE</code>, <code>MAGENTA</code>, <code>CYAN</code>, <code>WHITE</code>
+</li>
+<li>
+<code>wrap</code>: Whether or not to wrap the message column. Default is <code>True</code>.</li>
+<li>
+<code>packages</code>: An array containing the packages that you want to filter on. 
+this will be applied in addition to the filters.</li>
+</ul><p>Here is an extended example:</p>
+
+<pre><code>Profile(name = "radio",
+    # Specify a custom device
+    device = "device_name",
+
+    # Enable both radio and main buffers (-b radio -b main)
+    buffers = ("radio", "main"),
+
+    # Only pay attention to the RIL and RILC tags, and give them custom colors
+    tags = {
+        "RIL": BLUE,
+        "RILC": GREEN
+    },
+
+    # Only look at these priority levels
+    priorities = ("I", "W", "E"),
+
+    # Use threadtime format to get date/time stamps and thread IDs
+    format = "threadtime",
+
+    # Some custom filters
+    filters = (
+      r"My Custom Regex",
+      lambda data: data["message"] == "Custom filter"
+    ),
+)
+</code></pre>
+
+<h3>
+<a name="-filters" class="anchor" href="#-filters"><span class="octicon octicon-link"></span></a><a></a> Filters</h3>
+
+<p>Filters allow your profile to have complete control over what log data you
+actually see when you run logcat-color.</p>
+
+<p>logcat-color will run each line of log output through the list of filters in
+your profile. Only when the entire list of filters have accepted the line will
+it actually be displayed. This is the equivalent of logically ANDing the results
+of each filter. If you require different logic, you should use a custom function
+filter, and combine the results of various filters manually.</p>
+
+<p>There are currently two different kinds of filters:</p>
+
+<h4>
+<a name="regex-filters" class="anchor" href="#regex-filters"><span class="octicon octicon-link"></span></a>Regex filters</h4>
+
+<p>When the regex matches the message portion of a line of logcat output, that line
+will then be matched against the next filter. For example:</p>
+
+<pre><code># A negated regex -- exclude any line that matches this
+def negatedRegex(regex):
+  return r"^(?!.*" + regex + ").*$"
+
+Profile(...
+  filters = (negatedRegex(r"debugging: "), r"my custom regex")
+)
+</code></pre>
+
+<h4>
+<a name="function-filters" class="anchor" href="#function-filters"><span class="octicon octicon-link"></span></a>Function filters</h4>
+
+<p>When the function returns <code>True</code> for a line of log output, that line will then
+be matched against the next filter. The function will be passed a <code>data</code>
+dictionary that contains all of the log data:</p>
+
+<ul>
+<li>
+<code>"priority"</code>: One of the logcat priorities: <code>V</code> (verbose), <code>D</code> (debug),
+<code>I</code> (info), <code>W</code> (warn), <code>E</code> (error), <code>F</code> (fatal).
+Availability: All logcat formats.</li>
+<li>
+<code>"message"</code>: The log message itself
+Availability: All logcat formats.</li>
+<li>
+<code>"tag"</code>: The Tag of this log message.
+Availability: All logcat formats except <code>thread</code>.</li>
+<li>
+<code>"pid"</code>: The PID of the process that logged the message (in string form).
+Availability: All logcat formats except <code>tag</code>.</li>
+<li>
+<code>"tid"</code>: The ID of the thread that logged the message (in string form).
+Availability: <code>thread</code>, <code>threadtime</code>, and <code>long</code> formats.</li>
+<li>
+<code>"date"</code>: The date of the log message (in string form).
+Availability: <code>time</code>, <code>threadtime</code>, and <code>long</code> formats.</li>
+<li>
+<code>"time"</code>: The time of the log message (in string form).
+Availability: <code>time</code>, <code>threadtime</code>, and <code>long</code> formats.</li>
+</ul><p>Notice that many of these fields are conditional based on the logcat output
+format. Be careful when constructing the logic of function filters, as the field
+you are filtering may not exist in the message!</p>
+
+<p>An example of a function filter:</p>
+
+<pre><code># only include messages from my app's tags
+def onlyMyApp(data):
+    # Tag isn't available in "thread" format, so use get() to be safe and
+    # return None instead of raising an exception
+    return data.get("tag") in ("MyAppTag1", "MyAppTag2")
+
+Profile(...
+    filters = (onlyMyApp)
+)
+</code></pre>
+
+<h3>
+<a name="package-filters" class="anchor" href="#package-filters"><span class="octicon octicon-link"></span></a>Package Filters</h3>
+
+<p>When you only care about a few (or one) application this will pass all
+messages to you by that application. </p>
+
+<p><em>Note</em>: This will require the application's startup message to be accessible 
+via the current logback trace. The best bet it to start logcat-color then
+start the app.</p>
+
+<p>An example of package filters</p>
+
+<pre><code>Profile(...
+    packages = [ "com.android.example" ]
+)
+</code></pre>
+
+<h2>
+<a name="screenshot" class="anchor" href="#screenshot"><span class="octicon octicon-link"></span></a>Screenshot</h2>
+
+<p><img src="https://img.skitch.com/20120629-jkeek3mbk2ibk9w75xqku88wpt.jpg" alt="logcat-color screenshot of Boot2Gecko"></p>
+
+<h2>
+<a name="thanks" class="anchor" href="#thanks"><span class="octicon octicon-link"></span></a>Thanks</h2>
+
+<p>Thanks to <a href="http://jsharkey.org">Jeff Sharkey</a> for the original script that logcat-color is based on, <a href="http://jsharkey.org/blog/2009/04/22/modifying-the-android-logcat-stream-for-full-color-debugging/">coloredlogcat.py</a>.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-7159199-5");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>

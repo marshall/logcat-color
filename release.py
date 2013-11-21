@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
+import base64
 import collections
 import httplib
 import json
+import mimetypes
 import os
 import sys
 import subprocess
 
+mimetypes.init()
 this_dir = os.path.dirname(os.path.abspath(__file__))
 dist_dir = os.path.join(this_dir, "dist")
 setup_py = os.path.join(this_dir, "setup.py")
@@ -37,10 +40,12 @@ class ReleaseCommand(object):
 
     def github_api(self, path, data):
         body = json.dumps(data)
-        path += "?access_token=%s" % self.access_token
-
         connection = httplib.HTTPSConnection("api.github.com")
-        connection.request("POST", path, body = body)
+        auth = base64.encodestring('%s:%s' % (self.access_token, 'x-oauth-basic')).replace('\n', '')
+        connection.request("POST", path, body, {
+            "Authorization": "Basic %s" % auth,
+        })
+
         response = connection.getresponse()
         response_body = response.read()
         connection.close()
@@ -57,33 +62,28 @@ class ReleaseCommand(object):
         description = "%s version %s" % \
             (self.package["name"], self.package["version"])
 
-        data = self.github_api("/repos/marshall/logcat-color/downloads", {
-            "name": self.tarball_name,
-            "size": os.stat(self.tarball).st_size,
-            "description": description,
+        data = self.github_api("/repos/marshall/logcat-color/releases", {
+            "tag_name": "v%s" % self.package["version"],
+            "name": self.package["version"],
+            "body": description,
         })
 
         print data
 
+        upload_url = data["upload_url"].replace("{?name}", "?name=%s" % self.tarball_name)
+
         self.run("curl",
-            "-F", "key=%s" % data["path"],
-            "-F", "acl=%s" % data["acl"],
-            "-F", "success_action_status=201",
-            "-F", "Filename=%s" % data["name"],
-            "-F", "AWSAccessKeyId=%s" % data["accesskeyid"],
-            "-F", "Policy=%s" % data["policy"],
-            "-F", "Signature=%s" % data["signature"],
-            "-F", "Content-Type=%s" % data["mime_type"],
+            "-u", "%s:x-oauth-basic" % self.access_token,
+            "-F", "Content-Type=%s" % mimetypes.guess_type(self.tarball)[0],
             "-F", "file=@%s" % self.tarball,
-            data["s3_url"])
+            upload_url)
 
     def help(self):
         print """
 Usage: %s <command> [args]
 Supported commands:
     help            view this help message
-    build           build source distribution and create a git tag
-    tag             create the git tag for the version in setup.py
+    build           build source distribution tarball
     push            push the release tarball to github and pypi, and push git tags
     bump [version]  bump to [version] in setup.json, stage, and prepare a commit message
 """ % sys.argv[0]
@@ -95,17 +95,10 @@ Supported commands:
         print "%s succesfully built. to tag, use %s tag\n" % \
             (self.tarball_name, sys.argv[0])
 
-    def tag(self):
-        self.run("git", "tag", "v%s" % self.package["version"])
-
-        print "git tag \"v%s\" created. to push the release, use %s push\n" % \
-            (self.package["version"], sys.argv[0])
-
     def push(self):
         # upload source tarball->github, and setup.py upload for pypi
         self.github_upload()
         self.run(sys.executable, setup_py, "sdist", "upload")
-        self.run("git", "push", "--tags")
 
         print "%s successfully uploaded, and v%s tag pushed. to bump, use %s bump\n" % \
             (self.tarball_name, self.package["version"], sys.argv[0])

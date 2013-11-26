@@ -38,13 +38,12 @@ class LogcatColorTest(unittest.TestCase):
 
     def start_logcat_color(self, *args, **kwargs):
         args = list(args)
-        args.insert(0, common.logcat_color)
         if "config" in kwargs:
-            args[1:1] = ["--config", kwargs["config"]]
+            args.extend(["--config", kwargs["config"]])
             del kwargs["config"]
         elif "--config" not in args:
             # fall back to empty config
-            args[1:1] = ["--config", EMPTY_CONFIG]
+            args.extend(["--config", EMPTY_CONFIG])
 
         piped = ""
         piped_path = None
@@ -54,9 +53,10 @@ class LogcatColorTest(unittest.TestCase):
             del kwargs["piped"]
         elif "input" in kwargs:
             piped = None
-            args[1:1] = ["--input", kwargs["input"]]
+            args.extend(["--input", kwargs["input"]])
             del kwargs["input"]
 
+        args = [sys.executable, common.logcat_color] + args
         if self.DEBUG:
             piped_debug = ""
             if piped_path:
@@ -86,7 +86,7 @@ class LogcatColorTest(unittest.TestCase):
     def test_plain_logging(self):
         self.assertEqual(self.proc.returncode, 0)
         brief_data = open(BRIEF_LOG, "r").read()
-        self.assertEqual(self.out, brief_data)
+        self.assertEqual(self.out.replace('\r\n', '\n'), brief_data)
 
     @logcat_color_test("--plain", "brief_filter_fn",
         input=BRIEF_LOG, config=BRIEF_FILTER_CONFIG)

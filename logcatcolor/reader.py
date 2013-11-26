@@ -8,64 +8,47 @@ Logcat I/O stream readers and helpers
 """
 import asyncore
 import asynchat
-from cStringIO import StringIO
-import fcntl
 import inspect
-from logcatcolor.format import Format, detect_format
-from logcatcolor.layout import Layout
 import os
 import sys
 import traceback
 
-# Parts copied from asyncore.file_dispatcher
-class FileLineReader(asynchat.async_chat):
-    LINE_TERMINATOR = "\n"
+from cStringIO import StringIO
+from subprocess import Popen, PIPE
+from threading import Thread, Event
+from Queue import Queue, Empty
 
-    def __init__(self, fd):
-        asynchat.async_chat.__init__(self)
-        self.connected = True
-        self.log_buffer = StringIO()
+from logcatcolor.format import Format, detect_format, BriefFormat
+from logcatcolor.layout import Layout, BriefLayout
 
-        self.set_file(fd)
-        self.set_terminator(self.LINE_TERMINATOR)
+class LineReader(Thread):
+    daemon = True
 
-    def set_file(self, fd):
-        try:
-            # fd may be a file object
-            fd = fd.fileno()
-        except AttributeError:
-            pass
+    def __init__(self, file):
+        super(LineReader, self).__init__()
+        self.file = file
+        self.queue = Queue()
+        self.event = Event()
 
-        self.socket = asyncore.file_wrapper(fd)
-        self._fileno = self.socket.fileno()
-        self.add_channel()
+    def run(self):
+        while True:
+            try:
+                line = self.file.readline()
+                if line == '' or self.event.isSet():
+                    break
 
-        flags = fcntl.fcntl(fd, fcntl.F_GETFL, 0)
-        flags = flags | os.O_NONBLOCK
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+                self.queue.put(line)
+            except KeyboardInterrupt, e:
+                break
 
-    def collect_incoming_data(self, data):
-        self.log_buffer.write(data)
+    def stop(self):
+        self.event.set()
 
-    def found_terminator(self):
-        line = self.log_buffer.getvalue()
-        try:
-            self.process_line(line)
-        except:
-            traceback.print_exc()
-            sys.exit(1)
-
-        self.log_buffer = StringIO()
-
-    def process_line(self):
-        pass
-
-class LogcatReader(FileLineReader):
+class LogcatReader(object):
     DETECT_COUNT = 3
 
-    def __init__(self, file, config, profile=None, format=None, layout=None,
+    def __init__(self, config, profile=None, format=None, layout=None,
                  writer=None, width=80):
-        FileLineReader.__init__(self, file)
         self.detect_lines = []
         self.config = config
         self.profile = profile
@@ -87,10 +70,34 @@ class LogcatReader(FileLineReader):
         if len(self.detect_lines) > 0 and not self.format:
             self.format = BriefFormat()
             if not self.layout:
-                self.layout = BriefLayout()
+                self.layout = BriefLayout(self.config, self.profile, self.width)
 
             for line in self.detect_lines:
                 self.layout_line(line)
+
+    def start_logcat(self, command):
+        proc = Popen(command, stdout=PIPE)
+        try:
+            self.start_file(proc.stdout)
+        finally:
+            if proc.returncode is None:
+                proc.terminate()
+
+    def start_file(self, file):
+        t = LineReader(file)
+        t.start()
+
+        try:
+            while t.isAlive() or not t.queue.empty():
+                try:
+                    line = t.queue.get(True, 0.5)
+                    self.process_line(line)
+                    t.queue.task_done()
+                except Empty, e:
+                    continue
+        finally:
+            if t.isAlive():
+                t.stop()
 
     def detect_format(self, line):
         if len(self.detect_lines) < self.DETECT_COUNT:

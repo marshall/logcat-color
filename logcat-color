@@ -10,16 +10,15 @@ Thanks to Jeff Sharkey, the author of coloredlogcat.py,
 the original inspiration of logcat-color
 """
 import asyncore
-import fcntl
 import optparse
 import os
 import struct
 import sys
-import termios
+from subprocess import check_call
 
 from colorama import Fore, Back, Style
-from subprocess import check_call, Popen, PIPE
 
+import logcatcolor.term
 from logcatcolor.config import LogcatColorConfig
 from logcatcolor.profile import Profile
 from logcatcolor.reader import LogcatReader
@@ -27,7 +26,6 @@ from logcatcolor.reader import LogcatReader
 class LogcatColor(object):
     def __init__(self, args=None):
         self.parse_args(args)
-        self.width = self.get_term_width()
         self.config = LogcatColorConfig(self.options)
 
         self.profile = None
@@ -48,18 +46,6 @@ class LogcatColor(object):
         self.layout = self.format
         if self.options.plain:
             self.layout = "raw"
-
-    def get_term_width(self):
-        out_fd = self.output.fileno()
-        if os.isatty(out_fd):
-            # unpack the current terminal width / height
-            data = fcntl.ioctl(out_fd, termios.TIOCGWINSZ, '1234')
-            height, width = struct.unpack('hh', data)
-        else:
-           # store a large width when the output of this script is being piped
-           width = 2000
-
-        return width
 
     def parse_args(self, args=None):
         parser = optparse.OptionParser()
@@ -143,6 +129,7 @@ class LogcatColor(object):
         if options.output:
             self.output = open(options.output, "w")
 
+        self.width = logcatcolor.term.get_width(self.output.fileno())
         self.adb_device = options.adb_device
         self.logcat_args = options.logcat_args or []
 
@@ -201,34 +188,27 @@ class LogcatColor(object):
 
         return logcat_args
 
-    def start_logcat(self):
-        adb_command = self.get_adb_args()
-        adb_command.append("logcat")
-        adb_command.extend(self.get_logcat_args())
-        self.input = Popen(adb_command, stdout=PIPE).stdout
-
-    def init_reader(self):
-        reader = LogcatReader(self.input, self.config, profile=self.profile,
+    def start(self):
+        self.reader = LogcatReader(self.config, profile=self.profile,
             format=self.format, layout=self.layout, writer=self.output,
             width=self.width)
 
-    def start(self):
         # if someone is piping, use stdin as input. if not, invoke adb logcat
         if self.input.isatty():
-            self.start_logcat()
-
-        self.init_reader()
+            adb_command = self.get_adb_args()
+            adb_command.append("logcat")
+            adb_command.extend(self.get_logcat_args())
+            self.reader.start_logcat(adb_command)
+        else:
+            self.reader.start_file(self.input)
 
     def loop(self):
         try:
-            self.start()
             while True:
-                asyncore.loop()
+                self.start()
                 if not self.config.get_stay_connected():
                     break
                 self.wait_for_device()
-                self.start_logcat()
-                self.init_reader()
         except KeyboardInterrupt, e:
             pass
 
@@ -250,3 +230,4 @@ class LogcatColor(object):
 
 if __name__ == "__main__":
     LogcatColor().loop()
+    sys.exit(0)

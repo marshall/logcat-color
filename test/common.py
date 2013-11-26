@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
 top_dir = os.path.dirname(this_dir)
@@ -24,7 +25,7 @@ class MockAdbLogcatColor(LogcatColor):
 
     def get_adb_args(self):
         adb_args = LogcatColor.get_adb_args(self)
-        adb_args[0:1] = [mock_adb, "--log", self.log, "--results", self.results]
+        adb_args[0:1] = [sys.executable, mock_adb, "--log", self.log, "--results", self.results]
         return adb_args
 
     def wait_for_device(self):

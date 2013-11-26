@@ -1,3 +1,5 @@
 dist
 *.egg-info
 Gemfile.lock
+public
+_site

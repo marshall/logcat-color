@@ -1,3 +1,9 @@
+"""
+logcat-color
+
+Copyright 2012-2013, Marshall Culpepper
+Licensed under the Apache License, Version 2.0
+"""
 from logcatcolor.column import TagColumn
 from logcatcolor.profile import Profile
 import os

@@ -1,7 +1,7 @@
 """
 logcat-color
 
-Copyright 2012, Marshall Culpepper
+Copyright 2012-2013, Marshall Culpepper
 Licensed under the Apache License, Version 2.0
 
 Support for reading various logcat logging formats into an easier to consume

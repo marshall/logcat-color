@@ -1,0 +1,2 @@
+destination: public
+exclude: ["CNAME", "Rakefile", "README.md", "public"]

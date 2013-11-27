@@ -2,3 +2,6 @@ build
 dist
 *.egg-info
 *.pyc
+_site
+public
+Gemfile.lock

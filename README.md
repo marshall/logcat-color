@@ -8,50 +8,70 @@ work in Windows.
 # Installation
 
 **Installation with pip / easy_install** (may require sudo)
-    
-    $ [sudo] pip install logcat-color
-    .. or ..
-    $ [sudo] easy_install logcat-color
+
+```bash
+$ [sudo] pip install logcat-color
+```
+.. or ..
+```bash
+$ [sudo] easy_install logcat-color
+```
 
 **Installation from source** (requires setuptools, may require sudo)
 
 To get the source, simply [download and extract a release tarball](https://github.com/marshall/logcat-color/downloads).
 Alternatively, you can clone the logcat-color git repository directly:
-    
-    $ git clone git://github.com/marshall/logcat-color.git
+
+```bash    
+$ git clone git://github.com/marshall/logcat-color.git
+```
 
 To install logcat-color from the source directory, run:
-    
-    $ python setup.py install
+
+```bash    
+$ python setup.py install
+```
 
 ## Examples
 
 Run and colorify `adb logcat`
-    
-    $ logcat-color
+
+```bash    
+$ logcat-color
+```
 
 Colorify an old logcat text file you have laying around
-    
-    $ logcat-color < /path/to/my.log
+
+```bash    
+$ logcat-color < /path/to/my.log
+```
 
 Pipe logcat-color to egrep for only the tags you care about
-    
-    $ logcat-color -e | egrep '(Tag1|Tag2)'
+
+```bash    
+$ logcat-color -e | egrep '(Tag1|Tag2)'
+```
 
 Run logcat-color with a [custom profile](#profiles) for [filters](#profile_filters), colors, and custom arguments)
-    
-    $ logcat-color <profile-name>
+
+```bash    
+$ logcat-color <profile-name>
+```
 
 logcat-color also supports most of the standard adb / logcat arguments, making it a suitable full-time replacement for `adb logcat`
-    
-    $ alias logcat=/path/to/logcat-color
-    $ logcat -e
-    $ logcat -d
-    $ logcat -s 123456789 -b radio -b main
+
+```bash    
+$ alias logcat=/path/to/logcat-color
+$ logcat -e
+$ logcat -d
+$ logcat -s 123456789 -b radio -b main
+```
 
 For command line usage documentation:
-    
-    $ logcat-color --help
+
+```bash    
+$ logcat-color --help
+```
 
 ## <a id="configuration"></a>Configuration
 
@@ -61,23 +81,25 @@ The configuration file is simply a python script, with a few interesting variabl
 and types available to it.
 
 **Sample .logcat-color**
-    
-    # Full path to adb, default is to look at the environment variable ADB, or
-    # fall back on using "adb" from the system PATH
-    adb = "/path/to/adb"
 
-    # Width of the TAG column, default is 20
-    tag_width = 20
+```bash    
+# Full path to adb, default is to look at the environment variable ADB, or
+# fall back on using "adb" from the system PATH
+adb = "/path/to/adb"
 
-    # Width of the PID column, default is 8
-    pid_width = 8
+# Width of the TAG column, default is 20
+tag_width = 20
 
-    # Width of priority (log level) column, default is 3
-    priority_width = 3
+# Width of the PID column, default is 8
+pid_width = 8
 
-    # Whether or not to wrap the message inside a column. Setting this to False
-    # enables easier copy/paste. default is True
-    wrap = True
+# Width of priority (log level) column, default is 3
+priority_width = 3
+
+# Whether or not to wrap the message inside a column. Setting this to False
+# enables easier copy/paste. default is True
+wrap = True
+```
 
 ## <a id="profiles"></a> Profiles
 
@@ -93,12 +115,16 @@ In short, a single Profile can:
 A profile is created by simply calling the Profile python constructor with
 various named arguments. The only required argument is the Profile's `name`:
 
-    Profile(name = "myProfile", ...)
+```bash
+Profile(name = "myProfile", ...)
+```
 
 You can then have logcat-color use this profile by providing it on the command
 line. For example:
-    
-    $ logcat-color myProfile
+
+```bash    
+$ logcat-color myProfile
+```
 
 To customize the Profile, simply pass more named arguments to the `Profile`
 constructor. This is a list of all the currently supported named arguments:
@@ -129,32 +155,34 @@ constructor. This is a list of all the currently supported named arguments:
   this will be applied in addition to the filters.
 
 Here is an extended example:
-    
-    Profile(name = "radio",
-        # Specify a custom device
-        device = "device_name",
 
-        # Enable both radio and main buffers (-b radio -b main)
-        buffers = ("radio", "main"),
+```bash    
+Profile(name = "radio",
+    # Specify a custom device
+    device = "device_name",
 
-        # Only pay attention to the RIL and RILC tags, and give them custom colors
-        tags = {
-            "RIL": BLUE,
-            "RILC": GREEN
-        },
+    # Enable both radio and main buffers (-b radio -b main)
+    buffers = ("radio", "main"),
 
-        # Only look at these priority levels
-        priorities = ("I", "W", "E"),
+    # Only pay attention to the RIL and RILC tags, and give them custom colors
+    tags = {
+        "RIL": BLUE,
+        "RILC": GREEN
+    },
 
-        # Use threadtime format to get date/time stamps and thread IDs
-        format = "threadtime",
+    # Only look at these priority levels
+    priorities = ("I", "W", "E"),
 
-        # Some custom filters
-        filters = (
-          r"My Custom Regex",
-          lambda data: data["message"] == "Custom filter"
-        ),
-    )
+    # Use threadtime format to get date/time stamps and thread IDs
+    format = "threadtime",
+
+    # Some custom filters
+    filters = (
+      r"My Custom Regex",
+      lambda data: data["message"] == "Custom filter"
+    ),
+)
+```
 
 ### <a id="profile_filters"></a> Filters
 
@@ -173,14 +201,16 @@ There are currently two different kinds of filters:
 
 When the regex matches the message portion of a line of logcat output, that line
 will then be matched against the next filter. For example:
-    
-    # A negated regex -- exclude any line that matches this
-    def negatedRegex(regex):
-      return r"^(?!.*" + regex + ").*$"
 
-    Profile(...
-      filters = (negatedRegex(r"debugging: "), r"my custom regex")
-    )
+```bash
+# A negated regex -- exclude any line that matches this
+def negatedRegex(regex):
+  return r"^(?!.*" + regex + ").*$"
+
+Profile(...
+  filters = (negatedRegex(r"debugging: "), r"my custom regex")
+)
+```
 
 #### Function filters
 
@@ -209,16 +239,18 @@ format. Be careful when constructing the logic of function filters, as the field
 you are filtering may not exist in the message!
 
 An example of a function filter:
-    
-    # only include messages from my app's tags
-    def onlyMyApp(data):
-        # Tag isn't available in "thread" format, so use get() to be safe and
-        # return None instead of raising an exception
-        return data.get("tag") in ("MyAppTag1", "MyAppTag2")
 
-    Profile(...
-        filters = (onlyMyApp)
-    )
+```bash
+# only include messages from my app's tags
+def onlyMyApp(data):
+    # Tag isn't available in "thread" format, so use get() to be safe and
+    # return None instead of raising an exception
+    return data.get("tag") in ("MyAppTag1", "MyAppTag2")
+
+Profile(...
+    filters = (onlyMyApp)
+)
+```
 
 ### Package Filters
 
@@ -231,9 +263,11 @@ start the app.
 
 An example of package filters
 
-    Profile(...
-        packages = [ "com.android.example" ]
-    )
+```bash
+Profile(...
+    packages = [ "com.android.example" ]
+)
+```
 
 ## Screenshot
 ![logcat-color screenshot of Boot2Gecko](https://img.skitch.com/20120629-jkeek3mbk2ibk9w75xqku88wpt.jpg)

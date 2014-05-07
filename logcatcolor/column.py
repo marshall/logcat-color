@@ -106,7 +106,8 @@ class PriorityColumn(Column):
         "I": Fore.BLACK + Back.GREEN,
         "W": Fore.BLACK + Back.YELLOW,
         "E": Fore.BLACK + Back.RED,
-        "F": Fore.BLACK + Back.RED
+        "F": Fore.BLACK + Back.RED,
+        "S": Fore.BLACK + Back.WHITE
     }
 
     def __init__(self, layout):

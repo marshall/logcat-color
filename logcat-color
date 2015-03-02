@@ -10,6 +10,7 @@ Thanks to Jeff Sharkey, the author of coloredlogcat.py,
 the original inspiration of logcat-color
 """
 import asyncore
+import errno
 import fcntl
 import optparse
 import os
@@ -205,7 +206,19 @@ class LogcatColor(object):
         adb_command = self.get_adb_args()
         adb_command.append("logcat")
         adb_command.extend(self.get_logcat_args())
-        self.input = Popen(adb_command, stdout=PIPE).stdout
+        try:
+            self.input = Popen(adb_command, stdout=PIPE).stdout
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                print >>sys.stderr, \
+                    'Error, adb could not be found using: "%s"\n' \
+                    'To fix this: \n' \
+                    '  1) Add the directory containing adb to your PATH\n' \
+                    '  2) Set the ADB environment variable\n' \
+                    '  3) Set "adb" in ~/.logcat-color' % adb_command[0]
+            else:
+                print >>sys.stderr, 'Could not run ADB: %s' % str(e)
+            sys.exit(e.errno)
 
     def init_reader(self):
         reader = LogcatReader(self.input, self.config, profile=self.profile,

@@ -32,12 +32,14 @@ class Profile(object):
 
         self.pid_map = {}
         self.package_search = {}
-        
+
         if packages:
             for package in packages:
                 search_string = 'Start proc ' + package
                 regex = re.compile(search_string + ".*?pid=(\\d+)", re.IGNORECASE|re.DOTALL)
-                self.package_search[package] = (search_string, regex)
+                regex51 = re.compile(r'Start proc (\d+):' + package)
+
+                self.package_search[package] = (search_string, regex, regex51)
 
     def init_tags(self, tags):
         self.tags = None
@@ -89,6 +91,9 @@ class Profile(object):
                 match = self.package_search[package][1].search(string)
                 if match:
                     self.pid_map[package] = match.group(1)
+                match51 = self.package_search[package][2].search(string)
+                if match51:
+                    self.pid_map[package] = match51.group(1)
 
     def include(self, data):
         if not data:
